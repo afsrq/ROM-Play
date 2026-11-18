@@ -234,7 +234,7 @@ pub struct GameSaves {
     /// The in-game save, relative to `dir`: save RAM, or a PS2 memory card.
     pub save_file: String,
     pub save_emulator: String,
-    /// For a multi-file game started with a file other than the one RomP picks, that file's
+    /// For a multi-file game started with a file other than the one ROM Play picks, that file's
     /// name: its saves and states are its own, in their own folder and RomM slot.
     pub variant: Option<String>,
 }
@@ -415,7 +415,7 @@ pub enum InGameSaveStatus {
     Waiting,
     /// Nothing here yet, but RomM has one, which comes down when the game starts.
     OnServer,
-    /// Nothing here and none of RomP's on RomM, but another emulator's that can be used.
+    /// Nothing here and none of ROM Play's on RomM, but another emulator's that can be used.
     FromOtherEmulator(OtherSave),
     /// Save sync is off, so the save stays on this computer.
     ThisComputerOnly,
@@ -424,7 +424,7 @@ pub enum InGameSaveStatus {
 /// What RomM holds for a game's in-game save.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ServerSaves {
-    /// A save under RomP's emulator, which RomM offers when the game starts.
+    /// A save under ROM Play's emulator, which RomM offers when the game starts.
     pub ours: bool,
     /// The newest save under another emulator, where saves carry over between emulators.
     pub other: Option<OtherSave>,
@@ -506,7 +506,7 @@ pub fn server_saves(
     }
 }
 
-/// Another emulator's save in the form RomP's emulator reads, or None when it can't be used.
+/// Another emulator's save in the form ROM Play's emulator reads, or None when it can't be used.
 pub fn adapt_other_save(platform_slug: &str, bytes: Vec<u8>) -> Option<Vec<u8>> {
     if !SAVES_CARRY_OVER.contains(&platform_slug) || bytes.is_empty() {
         return None;
@@ -530,7 +530,7 @@ pub fn remember_outcome(
     }
 }
 
-/// The server's saves RomP would sync: RomM offers a device only those under its emulator.
+/// The server's saves ROM Play would sync: RomM offers a device only those under its emulator.
 pub fn for_emulator(
     server: Vec<crate::romm::types::RemoteSave>,
     emulator: &str,
@@ -632,7 +632,7 @@ pub enum SramAction {
     Ask,
 }
 
-/// Decides from the save here, RomP's newest on RomM and the one last synced, all as content
+/// Decides from the save here, ROM Play's newest on RomM and the one last synced, all as content
 /// hashes. RomM's save is `Some(None)` when RomM didn't say its hash.
 pub fn sram_action(
     here: Option<&str>,
@@ -650,7 +650,7 @@ pub fn sram_action(
     }
 }
 
-/// Syncs a game's in-game save with RomP's newest on RomM, given the one last synced.
+/// Syncs a game's in-game save with ROM Play's newest on RomM, given the one last synced.
 pub async fn sync_sram(
     client: &Client,
     device_id: &str,
@@ -1467,13 +1467,13 @@ mod tests {
                    "updated_at": updated, "content_hash": "h", "emulator": "snes9x"})
         }
 
-        /// A save of RomP's on RomM, with this content hash.
+        /// A save of ROM Play's on RomM, with this content hash.
         fn remote(id: i64, hash: &str, updated: &str) -> serde_json::Value {
             json!({"id": id, "rom_id": 5, "file_name": "Zelda [t].srm", "slot": "autosave",
                    "updated_at": updated, "content_hash": hash, "emulator": "snes9x"})
         }
 
-        /// A newer save from another emulator, which RomP's sync leaves alone.
+        /// A newer save from another emulator, which ROM Play's sync leaves alone.
         fn other(id: i64, updated: &str) -> serde_json::Value {
             json!({"id": id, "rom_id": 5, "file_name": "Zelda.sav", "slot": "autosave",
                    "updated_at": updated, "content_hash": "other", "emulator": "bsnes"})

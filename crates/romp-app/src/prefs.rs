@@ -18,7 +18,7 @@ pub struct Preferences {
     /// 0 follows the system, then English, then `i18n::LANGUAGES` in order.
     pub language: u8,
     pub check_updates: bool,
-    /// Whether RomP offers itself under RomM's "Install on device", and downloads what comes.
+    /// Whether ROM Play offers itself under RomM's "Install on device", and downloads what comes.
     pub accept_installs: bool,
     /// 0 follows the system, 1 is light and 2 is dark.
     pub appearance: u8,

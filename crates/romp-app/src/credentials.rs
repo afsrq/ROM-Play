@@ -185,7 +185,7 @@ impl<P: Secrets> Secrets for WithFileFallback<P> {
     }
 }
 
-const SERVICE: &str = "Romp";
+const SERVICE: &str = "ROM Play";
 const ACCOUNT: &str = "sign-ins";
 
 type Tokens = BTreeMap<String, String>;
@@ -206,8 +206,8 @@ impl Kind {
 
     fn legacy_service(self) -> &'static str {
         match self {
-            Kind::RomM => "Romp",
-            Kind::RetroAchievements => "Romp RetroAchievements",
+            Kind::RomM => "ROM Play",
+            Kind::RetroAchievements => "ROM Play RetroAchievements",
         }
     }
 }
@@ -379,9 +379,9 @@ mod tests {
     #[test]
     fn sign_ins_in_the_old_items_move_into_one() {
         let secrets = MemorySecrets::default();
-        secrets.set("Romp", "http://a/", "romm").unwrap();
+        secrets.set("ROM Play", "http://a/", "romm").unwrap();
         secrets
-            .set("Romp RetroAchievements", "beshr", "ra")
+            .set("ROM Play RetroAchievements", "beshr", "ra")
             .unwrap();
         let sign_ins = SignIns::new(secrets.clone());
         assert_eq!(sign_ins.romm().load("http://a/").as_deref(), Some("romm"));
@@ -389,8 +389,8 @@ mod tests {
             sign_ins.retro_achievements().load("beshr").as_deref(),
             Some("ra")
         );
-        assert_eq!(secrets.item("Romp", "http://a/"), None);
-        assert_eq!(secrets.item("Romp RetroAchievements", "beshr"), None);
+        assert_eq!(secrets.item("ROM Play", "http://a/"), None);
+        assert_eq!(secrets.item("ROM Play RetroAchievements", "beshr"), None);
 
         let reopened = SignIns::new(secrets.clone());
         assert_eq!(reopened.romm().load("http://a/").as_deref(), Some("romm"));

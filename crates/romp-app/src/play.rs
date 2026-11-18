@@ -1336,7 +1336,7 @@ pub fn launch(
     if !crate::i18n::applied() {
         crate::i18n::apply(crate::i18n::pick(0));
     }
-    ui.set_game_title(format!("{} — RomP", opts.title).into());
+    ui.set_game_title(format!("{} — ROM Play", opts.title).into());
     ui.set_game_name(opts.title.clone().into());
     ui.set_mouse_mode(opts.mouse);
     ui.set_menu_key(if opts.computer { "F12" } else { "Esc" }.into());

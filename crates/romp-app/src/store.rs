@@ -161,7 +161,7 @@ fn write_play_status(conn: &Connection, id: i64, status: PlayStatus) {
     .expect("write play status");
 }
 
-/// The ROMs RomM lists as versions of the ROM `id` names, which RomP has. RomM works them out
+/// The ROMs RomM lists as versions of the ROM `id` names, which ROM Play has. RomM works them out
 /// live, but a ROM's `updated_at` doesn't move when another ROM becomes or stops being its
 /// version, so of the two lists that could name the pair, the more recently updated one decides.
 fn versions_of(id: &str) -> String {
@@ -406,7 +406,7 @@ impl Store {
             .expect("delete kv");
     }
 
-    /// The files a multi-file game can start with, the one RomP starts by itself first; empty
+    /// The files a multi-file game can start with, the one ROM Play starts by itself first; empty
     /// when it has no choice.
     pub fn file_choices(&self, id: i64) -> Vec<String> {
         json_column(self.get(&format!("file_choices:{id}")))
@@ -425,7 +425,7 @@ impl Store {
         );
     }
 
-    /// The file the player chose to start a game with, when it isn't the one RomP would.
+    /// The file the player chose to start a game with, when it isn't the one ROM Play would.
     pub fn chosen_file(&self, id: i64) -> Option<String> {
         let chosen = self.get(&format!("chosen_file:{id}"))?;
         let choices = self.file_choices(id);

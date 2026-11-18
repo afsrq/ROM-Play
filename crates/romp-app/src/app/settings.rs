@@ -787,7 +787,7 @@ impl Controller {
         ui.set_settings_consoles(ModelRc::new(VecModel::from(groups)));
     }
 
-    /// The consoles in the library that Romp draws itself, with how each one's games look.
+    /// The consoles in the library that ROM Play draws itself, with how each one's games look.
     fn show_looks(&self) {
         let Some(ui) = self.ui() else { return };
         let platforms = self.shared.store.lock().unwrap().platforms(false);
@@ -870,8 +870,8 @@ impl Controller {
         self.measure_storage();
     }
 
-    /// Installs or updates shadPS4 and its QtLauncher, then opens QtLauncher on RomP's shadPS4
-    /// folder, so the settings changed there apply when RomP starts a PS4 game.
+    /// Installs or updates shadPS4 and its QtLauncher, then opens QtLauncher on ROM Play's shadPS4
+    /// folder, so the settings changed there apply when ROM Play starts a PS4 game.
     pub(super) fn open_ps4_settings(&self) {
         use crate::external::Ready;
         use crate::shadps4;
@@ -951,7 +951,7 @@ impl Controller {
     pub(super) fn copy_log(&self) {
         let Some(ui) = self.ui() else { return };
         let note = match crate::logs::last_game_in(&paths::logs_dir()) {
-            None => tr!("No game was played in RomP’s last five launches."),
+            None => tr!("No game was played in ROM Play’s last five launches."),
             Some(log) => match arboard::Clipboard::new().and_then(|mut c| c.set_text(log)) {
                 Ok(()) => tr!("Copied. Paste it into your bug report."),
                 Err(e) => {
@@ -969,7 +969,7 @@ fn index_within(index: i32, list: &[&str]) -> u8 {
     index.clamp(0, list.len() as i32 - 1) as u8
 }
 
-/// xemu and RPCS3 read the keyboard layout Romp writes into their settings, but bind controllers
+/// xemu and RPCS3 read the keyboard layout ROM Play writes into their settings, but bind controllers
 /// themselves, so a controller remap saved for them would never reach the game.
 fn remappable_on(slug: &str, keyboard: bool) -> bool {
     keyboard || core_for_platform(slug).is_some()

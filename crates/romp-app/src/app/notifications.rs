@@ -5,7 +5,7 @@ use crate::NotificationRow;
 use slint::{ModelRc, Timer, TimerMode, VecModel};
 use std::time::{Duration, SystemTime};
 
-/// RomM only pushes notifications to browser sessions, so RomP asks for them this often.
+/// RomM only pushes notifications to browser sessions, so ROM Play asks for them this often.
 const POLL_EVERY: Duration = Duration::from_secs(60);
 
 impl Controller {

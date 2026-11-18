@@ -53,7 +53,7 @@ pub fn game_ended(title: &str, code: Option<i32>) -> String {
 }
 
 /// The newest game's part of a log, from its start line to its end line, or to the end of the
-/// log when the game was still running or RomP stopped with it.
+/// log when the game was still running or ROM Play stopped with it.
 pub fn last_game(log: &str) -> Option<String> {
     let lines: Vec<&str> = log.lines().collect();
     let start = lines.iter().rposition(|l| l.contains(STARTED))?;
@@ -88,7 +88,7 @@ impl<W: Write> Write for Capped<W> {
         self.written += buf.len() as u64;
         if self.written >= self.limit {
             self.inner
-                .write_all(b"\nRomP stopped writing this log at its size limit.\n")?;
+                .write_all(b"\nROM Play stopped writing this log at its size limit.\n")?;
         }
         Ok(buf.len())
     }
@@ -198,7 +198,7 @@ mod tests {
         log.write_all(b"more").unwrap();
         let text = String::from_utf8(log.inner).unwrap();
         assert!(text.starts_with("1234567890abc"));
-        assert!(text.ends_with("RomP stopped writing this log at its size limit.\n"));
+        assert!(text.ends_with("ROM Play stopped writing this log at its size limit.\n"));
         assert!(!text.contains("more"));
     }
 }

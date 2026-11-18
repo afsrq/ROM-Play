@@ -257,8 +257,8 @@ impl HwVulkanContext {
             flags |= vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR;
         }
         let app = vk::ApplicationInfo::default()
-            .application_name(c"Romp")
-            .engine_name(c"Romp")
+            .application_name(c"ROM Play")
+            .engine_name(c"ROM Play")
             .api_version(version.max(vk::API_VERSION_1_1));
         let info = vk::InstanceCreateInfo::default()
             .application_info(&app)

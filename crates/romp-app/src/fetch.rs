@@ -9,7 +9,7 @@ use std::sync::atomic::AtomicBool;
 
 const CONTENT_HASHED: [&str; 2] = ["zip", "7z"];
 
-/// Formats only another emulator reads: (extension, that emulator, what RomP plays instead).
+/// Formats only another emulator reads: (extension, that emulator, what ROM Play plays instead).
 const FOREIGN_FORMATS: [(&str, &str, &str); 1] = [("bigpimg", "BigPEmu", ".cue, .cdi or .chd")];
 
 pub fn foreign_format(file_name: &str) -> Option<Foreign> {
@@ -68,7 +68,7 @@ pub async fn download_files(
     }
     let choices = file_choices(&rom, &files);
     // A file the player chose to start with is all that's needed of the game, and before they
-    // choose, the one RomP starts by itself: a folder can hold dozens of hacks or disc sets.
+    // choose, the one ROM Play starts by itself: a folder can hold dozens of hacks or disc sets.
     let pick = pick.filter(|p| choices.iter().any(|c| c == p));
     let pick = match only {
         Some(_) => pick,

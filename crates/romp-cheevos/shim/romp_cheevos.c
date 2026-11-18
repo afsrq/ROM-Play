@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The fields of an rc_client event that Romp shows, flattened so Rust needs no struct layouts. */
+/* The fields of an rc_client event that ROM Play shows, flattened so Rust needs no struct layouts. */
 typedef struct romp_rc_event {
   uint32_t type;
   uint32_t id;

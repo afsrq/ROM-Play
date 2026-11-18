@@ -1,4 +1,4 @@
-# The .deb and .rpm, built by `make packages` from the release binaries. RomP finds romp-runner
+# The .deb and .rpm, built by `make packages` from the release binaries. ROM Play finds romp-runner
 # and its shaders beside the program, so everything goes in /opt/romp and the command links there.
 name: romp
 arch: amd64
@@ -7,7 +7,7 @@ version: ${ROMP_VERSION}
 section: games
 maintainer: Beshr Kayali Reinholdsson <me@beshr.com>
 description: Play retro games from your RomM library, with each game running in its own sandboxed process.
-homepage: https://rompemu.github.io
+homepage: https://github.com/afsrq/RomP-Enhanced
 license: GPL-3.0-or-later
 
 contents:
@@ -22,7 +22,7 @@ contents:
   - src: crates/romp-app/shaders
     dst: /opt/romp/shaders
     type: tree
-  # Tells RomP's update check which download replaces it.
+  # Tells ROM Play's update check which download replaces it.
   - src: packaging/linux/package/deb
     dst: /opt/romp/package
     packager: deb
@@ -41,7 +41,7 @@ contents:
   - src: LICENSE
     dst: /usr/share/doc/romp/LICENSE
 
-# What RomP links to, and what winit loads when it opens a window on X11 or Wayland. Sound and
+# What ROM Play links to, and what winit loads when it opens a window on X11 or Wayland. Sound and
 # Vulkan are only recommended: a game still plays without them.
 overrides:
   deb:

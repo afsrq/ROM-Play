@@ -35,7 +35,7 @@ impl Controller {
         let store = self.shared.store.clone();
         let detail = detail.clone();
         self.shared.rt.spawn(async move {
-            // RomM sometimes fails a request while RomP starts up and asks for much at once.
+            // RomM sometimes fails a request while ROM Play starts up and asks for much at once.
             let list = || client.list_saves(game.rom_id, game.sram_slot(), &device);
             let listed = match list().await {
                 Err(_) => {
@@ -127,7 +127,7 @@ impl Controller {
         ui.set_game_slots_hardcore(self.ra_account().is_some() && self.ra_hardcore());
     }
 
-    /// Copies another emulator's save from RomM as this game's, which then syncs as RomP's.
+    /// Copies another emulator's save from RomM as this game's, which then syncs as ROM Play's.
     pub(super) fn use_other_save(&self) {
         let Some(detail) = self.current_game() else {
             return;
@@ -160,7 +160,7 @@ impl Controller {
             .await;
             on_ui(move |c| {
                 let status = match result {
-                    Ok(true) => tr!("Using the save from {}. It becomes RomP's own the first time the game saves.", emulator),
+                    Ok(true) => tr!("Using the save from {}. It becomes ROM Play's own the first time the game saves.", emulator),
                     Ok(false) => tr!(
                         "The save from {} isn't one this emulator can read.",
                         emulator

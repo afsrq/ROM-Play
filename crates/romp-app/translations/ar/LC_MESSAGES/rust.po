@@ -141,7 +141,7 @@ msgid "Could not reach RetroAchievements"
 msgstr "تعذر الوصول إلى RetroAchievements"
 
 #: crates/romp-app/src/achievements/mod.rs
-msgid "RetroAchievements sent an answer RomP did not understand"
+msgid "RetroAchievements sent an answer ROM Play did not understand"
 msgstr "الإنجازات التراجعية أرسلت إجابة من رومبي لم تفهم"
 
 #: crates/romp-app/src/achievements/mod.rs
@@ -149,7 +149,7 @@ msgid "RetroAchievements did not accept the sign-in"
 msgstr "الإنجازات التراجعية لم تقبل تسجيل الدخول"
 
 #: crates/romp-app/src/app/game.rs
-msgid "RomP can't play {} games yet."
+msgid "ROM Play can't play {} games yet."
 msgstr "لا يستطيع رومبي اللعب {} مباراة بعد."
 
 #: crates/romp-app/src/app/game.rs
@@ -467,7 +467,7 @@ msgid "That takes two or three buttons held together. Try again."
 msgstr ""
 
 #: crates/romp-app/src/app/settings.rs
-msgid "No game was played in RomP’s last five launches."
+msgid "No game was played in ROM Play’s last five launches."
 msgstr ""
 
 #: crates/romp-app/src/app/settings.rs
@@ -553,7 +553,7 @@ msgid "On RomM from {} · {}"
 msgstr ""
 
 #: crates/romp-app/src/slots.rs
-msgid "On this computer only · pair RomP to sync it"
+msgid "On this computer only · pair ROM Play to sync it"
 msgstr ""
 
 #: crates/romp-app/src/slots.rs
@@ -727,7 +727,7 @@ msgid "Couldn't delete \"{0}\": {1}."
 msgstr "تعذر حذف \"{0}\": {1}."
 
 #: crates/romp-app/src/app/installs.rs
-msgid "This game isn't in RomP's library."
+msgid "This game isn't in ROM Play's library."
 msgstr ""
 
 #: crates/romp-app/src/app/installs.rs
@@ -791,7 +791,7 @@ msgid "Copying the save from {}…"
 msgstr ""
 
 #: crates/romp-app/src/app/slots.rs
-msgid "Using the save from {}. It becomes RomP's own the first time the game saves."
+msgid "Using the save from {}. It becomes ROM Play's own the first time the game saves."
 msgstr ""
 
 #: crates/romp-app/src/app/slots.rs
@@ -1119,7 +1119,7 @@ msgid "The server sent an invalid file path"
 msgstr "الخادم أرسل مسار ملف غير صالح"
 
 #: crates/romp-app/src/download.rs
-msgid "This copy is in {0}'s own format ({1}), which RomP can't play. A {2} copy of the game would play."
+msgid "This copy is in {0}'s own format ({1}), which ROM Play can't play. A {2} copy of the game would play."
 msgstr ""
 
 #: crates/romp-app/src/external.rs
@@ -1473,7 +1473,7 @@ msgid "Enter your RomM server address."
 msgstr "أدخل عنوان خادم روم."
 
 #: crates/romp-app/src/romm/client.rs
-msgid "This server runs RomM {version}. RomP needs RomM 5.0 or newer."
+msgid "This server runs RomM {version}. ROM Play needs RomM 5.0 or newer."
 msgstr "هذا الخادم يعمل بـ RomM {version}. رومبي يحتاج إلى RomM 5.0 أو أحدث."
 
 #: crates/romp-app/src/romm/client.rs
@@ -1493,7 +1493,7 @@ msgid "RPCS3 could not install the PS3 system software."
 msgstr "ولم يتمكن RPCS3 من تثبيت برمجيات نظام PS3."
 
 #: crates/romp-app/src/rpcs3.rs
-msgid "RomP plays PS3 games stored as a game folder, an ISO, or a zip or 7z of one, and this one is a {kind} file."
+msgid "ROM Play plays PS3 games stored as a game folder, an ISO, or a zip or 7z of one, and this one is a {kind} file."
 msgstr "يلعب رومبي ألعاب PS3 المخزنة كمجلد لعبة، أو ISO أو zip أو 7z من واحد، وهذا ملف {kind}."
 
 #: crates/romp-app/src/rpcs3.rs

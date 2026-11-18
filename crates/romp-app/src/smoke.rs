@@ -9,7 +9,7 @@ const FRAMES: u64 = 180;
 const TIMEOUT: Duration = Duration::from_secs(90);
 pub const SLOT: u8 = 1;
 pub const FRAME_FILE: &str = "frame.png";
-/// "passed", or what failed: for when the exit code doesn't reach whoever started Romp.
+/// "passed", or what failed: for when the exit code doesn't reach whoever started ROM Play.
 pub const RESULT_FILE: &str = "result.txt";
 
 pub type Outcome = Rc<RefCell<Option<Result<(), String>>>>;
