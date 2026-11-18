@@ -49,6 +49,7 @@ mod scale;
 mod screenshot;
 mod session;
 mod shading;
+mod shadps4;
 mod slots;
 mod smoke;
 mod storage;

@@ -59,6 +59,7 @@ pub fn emulator(dir: PathBuf) -> Emulator {
         dir,
         pick: release_asset,
         exe_in,
+        finish: crate::external::nothing_more,
     }
 }
 
@@ -203,43 +204,9 @@ pub fn find_boot(dir: &Path) -> Option<PathBuf> {
 
 /// Unpacks a downloaded archive into a folder beside it and removes the archive, returning what to boot.
 pub fn unpack_game(archive: &Path) -> Result<PathBuf, String> {
-    let (Some(parent), Some(stem), Some(name)) =
-        (archive.parent(), archive.file_stem(), archive.file_name())
-    else {
-        return Err(tr::tr!("The download has no name"));
-    };
-    let dir = parent.join(stem);
-    let mut unpacking = stem.to_os_string();
-    unpacking.push(".unpacking");
-    let unpacking = parent.join(unpacking);
-    let _ = std::fs::remove_dir_all(&unpacking);
-    std::fs::create_dir_all(&unpacking).map_err(|e| e.to_string())?;
-    let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
-    let unpacked = crate::external::extract(
-        std::io::BufReader::new(file),
-        &name.to_string_lossy(),
-        &unpacking,
-    )
-    .map_err(|e| tr::tr!("Could not unpack the game: {e}", e))
-    .and_then(|()| {
-        find_boot(&unpacking)
-            .ok_or_else(|| tr::tr!("The archive has no PS3 game folder or ISO in it"))
-    });
-    let boot = match unpacked {
-        Ok(boot) => boot,
-        Err(e) => {
-            let _ = std::fs::remove_dir_all(&unpacking);
-            return Err(e);
-        }
-    };
-    let rel = boot
-        .strip_prefix(&unpacking)
-        .map_err(|e| e.to_string())?
-        .to_path_buf();
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::rename(&unpacking, &dir).map_err(|e| e.to_string())?;
-    let _ = std::fs::remove_file(archive);
-    Ok(dir.join(rel))
+    crate::external::unpack_game(archive, find_boot, || {
+        tr::tr!("The archive has no PS3 game folder or ISO in it")
+    })
 }
 
 pub struct LaunchConfig {

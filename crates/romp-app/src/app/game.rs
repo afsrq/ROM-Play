@@ -4,6 +4,7 @@ use crate::bios;
 use crate::cores::core_for_platform;
 use crate::details;
 use crate::download::DownloadError;
+use crate::external::Ready;
 use crate::fetch::download_files;
 use crate::paths;
 use crate::play::{self, CoreIdentity, GameOptions};
@@ -11,6 +12,7 @@ use crate::restore::{game_window_key, Placement};
 use crate::romm::client::Error;
 use crate::rpcs3;
 use crate::saves::{self, SramOutcome};
+use crate::shadps4;
 use crate::store::GameDetail;
 use crate::xemu::{self, Xemu};
 use crate::{GameCard, Shot};
@@ -25,11 +27,28 @@ use tr::tr;
 
 const SIMILAR_LIMIT: u32 = 12;
 
+/// Unpacks a downloaded game archive and returns what to start, for the consoles that need one.
+type UnpackGame = fn(&Path) -> Result<PathBuf, String>;
+
 pub(super) struct GameState {
     detail: GameDetail,
     pub(super) shots: Rc<VecModel<Shot>>,
     similar: Rc<VecModel<GameCard>>,
     versions: Vec<i64>,
+}
+
+/// Shows "Installing…" or "Updating…" on the game's page when a standalone emulator downloads.
+fn installing_status(id: i64, name: &'static str) -> impl FnOnce(bool) {
+    move |update| {
+        on_ui(move |c| {
+            let text = if update {
+                tr!("Updating {name}…", name)
+            } else {
+                tr!("Installing {name}…", name)
+            };
+            c.game_status(id, text);
+        });
+    }
 }
 
 fn load_image(path: &Path) -> Option<Image> {
@@ -40,6 +59,7 @@ pub(super) fn playable(platform_slug: &str) -> bool {
     core_for_platform(platform_slug).is_some()
         || platform_slug == xemu::PLATFORM
         || (platform_slug == rpcs3::PLATFORM && rpcs3::available())
+        || (shadps4::is_platform(platform_slug) && shadps4::available())
 }
 
 /// What started a download: the game page's button, or a game sent from RomM.
@@ -499,10 +519,19 @@ impl Controller {
             }
             let mut result = downloaded.map(|d| d.launch);
             if let Ok(path) = &result {
-                if detail.platform_slug == rpcs3::PLATFORM && rpcs3::is_archive(path) {
+                let unpack: Option<UnpackGame> = if detail.platform_slug == rpcs3::PLATFORM
+                    && rpcs3::is_archive(path)
+                {
+                    Some(rpcs3::unpack_game)
+                } else if shadps4::is_platform(&detail.platform_slug) && shadps4::is_archive(path) {
+                    Some(shadps4::unpack_game)
+                } else {
+                    None
+                };
+                if let Some(unpack) = unpack {
                     on_ui(move |c| c.game_status(id, tr!("Unpacking…")));
                     let archive = path.clone();
-                    result = tokio::task::spawn_blocking(move || rpcs3::unpack_game(&archive))
+                    result = tokio::task::spawn_blocking(move || unpack(&archive))
                         .await
                         .unwrap_or_else(|e| Err(e.to_string()))
                         .map_err(DownloadError::Unpack);
@@ -638,6 +667,9 @@ impl Controller {
         if detail.platform_slug == rpcs3::PLATFORM {
             return self.play_with_rpcs3(detail, rom);
         }
+        if shadps4::is_platform(&detail.platform_slug) {
+            return self.play_with_shadps4(detail, rom);
+        }
         let Some(core) = core_for_platform(&detail.platform_slug) else {
             return;
         };
@@ -740,13 +772,15 @@ impl Controller {
         self.shared.rt.spawn(async move {
             let id = detail.id;
             let xemu = Xemu::new(paths::cores_dir().join("xemu"));
-            let exe = match xemu.installed() {
-                Some(exe) => Ok(exe),
-                None => {
-                    on_ui(move |c| c.game_status(id, tr!("Installing {name}…", name = "xemu")));
-                    xemu.install(&http, xemu::RELEASES).await
-                }
-            };
+            let exe = xemu
+                .ensure(
+                    &http,
+                    xemu::RELEASES,
+                    offline,
+                    installing_status(id, "xemu"),
+                )
+                .await
+                .map(Ready::exe);
             let hdd = match exe {
                 Ok(_) => {
                     xemu.ensure_hdd_template(&http, xemu::HDD_IMAGE, xemu::HDD_IMAGE_SHA256)
@@ -860,13 +894,12 @@ impl Controller {
         self.shared.rt.spawn(async move {
             let id = detail.id;
             let emulator = rpcs3::emulator(paths::cores_dir().join("rpcs3"));
-            let exe = match (emulator.installed(), rpcs3::releases()) {
-                (Some(exe), _) => Ok(exe),
-                (None, Some(releases)) => {
-                    on_ui(move |c| c.game_status(id, tr!("Installing {name}…", name = "RPCS3")));
-                    emulator.install(&http, &releases).await
-                }
-                (None, None) => Err(tr!(
+            let exe = match rpcs3::releases() {
+                Some(releases) => emulator
+                    .ensure(&http, &releases, offline, installing_status(id, "RPCS3"))
+                    .await
+                    .map(Ready::exe),
+                None => Err(tr!(
                     "{name} has no download for this computer",
                     name = "RPCS3"
                 )),
@@ -975,6 +1008,65 @@ impl Controller {
             Err(e) => self.game_status(
                 detail.id,
                 tr!("Could not start {name}: {e}", name = "RPCS3", e),
+            ),
+        }
+    }
+
+    fn play_with_shadps4(&self, detail: GameDetail, rom: PathBuf) {
+        if shadps4::rosetta_missing() {
+            return self.game_status(
+                detail.id,
+                tr!("shadPS4 needs Rosetta 2. Install it by running softwareupdate --install-rosetta in Terminal, then try again."),
+            );
+        }
+        self.preparing.set(true);
+        self.game_status(detail.id, tr!("Getting ready…"));
+        let http = self.shared.http.clone();
+        let offline = self.offline.get();
+        self.shared.rt.spawn(async move {
+            let id = detail.id;
+            let emulator = shadps4::emulator(paths::cores_dir().join("shadps4"));
+            let ready = emulator
+                .ensure(
+                    &http,
+                    shadps4::RELEASES,
+                    offline,
+                    installing_status(id, "shadPS4"),
+                )
+                .await
+                .map(Ready::exe);
+            on_ui(move |c| c.launch_shadps4(detail, rom, ready));
+        });
+    }
+
+    fn launch_shadps4(&self, detail: GameDetail, rom: PathBuf, ready: Result<PathBuf, String>) {
+        self.preparing.set(false);
+        let exe = match ready {
+            Ok(exe) => exe,
+            Err(e) => return self.game_status(detail.id, e),
+        };
+        let boot = match shadps4::boot_path(&rom) {
+            Ok(boot) => boot,
+            Err(e) => return self.game_status(detail.id, e),
+        };
+        let home = shadps4::Home(paths::data_dir().join("shadps4"));
+        let fullscreen = self.prefs.get().fullscreen;
+        let id = detail.id;
+        let on_exit = move |code: Option<i32>, log: Vec<String>| {
+            let _ = slint::invoke_from_event_loop(move || {
+                with_controller(|c| c.external_closed(id, "shadPS4", code, log));
+            });
+        };
+        match shadps4::launch(&exe, &home, &boot, fullscreen, on_exit) {
+            Ok(running) => {
+                *self.running.borrow_mut() = Some(play::RunningGame::External(running));
+                self.game_status(detail.id, String::new());
+                self.record_play(detail.id);
+                *self.playing.borrow_mut() = Some(detail);
+            }
+            Err(e) => self.game_status(
+                detail.id,
+                tr!("Could not start {name}: {e}", name = "shadPS4", e),
             ),
         }
     }

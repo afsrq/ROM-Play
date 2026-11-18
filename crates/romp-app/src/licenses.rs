@@ -30,6 +30,11 @@ const RPCS3: Notice = notice(
     "GPL-2.0",
     "https://github.com/RPCS3/rpcs3/blob/master/LICENSE",
 );
+const SHADPS4: Notice = notice(
+    "shadPS4",
+    "GPL-2.0 or later",
+    "https://github.com/shadps4-emu/shadPS4/blob/main/LICENSE",
+);
 const RCHEEVOS: Notice = notice(
     "rcheevos",
     "MIT",
@@ -343,6 +348,9 @@ pub fn notices() -> Vec<Notice> {
     }
     if crate::xemu::available() {
         notices.push(XEMU);
+    }
+    if crate::shadps4::available() {
+        notices.push(SHADPS4);
     }
     if cfg!(target_os = "macos") {
         notices.push(MOLTENVK);

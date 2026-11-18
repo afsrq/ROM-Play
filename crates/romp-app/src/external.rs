@@ -20,6 +20,13 @@ struct Release {
     assets: Vec<Asset>,
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ReleaseOrList {
+    One(Release),
+    List(Vec<Release>),
+}
+
 #[derive(Serialize, Deserialize)]
 struct Manifest {
     version: String,
@@ -32,30 +39,139 @@ pub struct Emulator {
     pub dir: PathBuf,
     pub pick: fn(&[Asset]) -> Option<&Asset>,
     pub exe_in: fn(&Path, &str) -> PathBuf,
+    /// Runs on the unpacked folder before the program is looked for, for a download that holds
+    /// another archive.
+    pub finish: fn(&Path) -> Result<(), String>,
+}
+
+/// For an emulator whose download is ready once it is unpacked.
+pub fn nothing_more(_: &Path) -> Result<(), String> {
+    Ok(())
+}
+
+/// What [`Emulator::ensure`] found or did, so the caller can say so.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Ready {
+    /// The installed build is the latest, or it couldn't be checked and is used as it is.
+    Current(PathBuf),
+    /// A newer build, or the first one, was just installed.
+    Installed(PathBuf),
+}
+
+impl Ready {
+    pub fn exe(self) -> PathBuf {
+        match self {
+            Ready::Current(exe) | Ready::Installed(exe) => exe,
+        }
+    }
 }
 
 impl Emulator {
+    fn manifest(&self) -> Option<Manifest> {
+        serde_json::from_slice(&std::fs::read(self.dir.join("manifest.json")).ok()?).ok()
+    }
+
     pub fn installed(&self) -> Option<PathBuf> {
-        let manifest: Manifest =
-            serde_json::from_slice(&std::fs::read(self.dir.join("manifest.json")).ok()?).ok()?;
-        let exe = self.dir.join(manifest.exe);
+        let exe = self.dir.join(self.manifest()?.exe);
         exe.is_file().then_some(exe)
     }
 
-    pub async fn install(&self, http: &reqwest::Client, releases: &str) -> Result<PathBuf, String> {
+    /// The release tag of the installed build.
+    pub fn installed_version(&self) -> Option<String> {
+        self.installed()?;
+        Some(self.manifest()?.version)
+    }
+
+    /// Installs the emulator, or updates it when GitHub has a newer release, before a game starts.
+    /// `installing` is called just before a download begins. When GitHub can't be reached, or an
+    /// update fails, an installed build is used as it is so a game can still be played.
+    pub async fn ensure(
+        &self,
+        http: &reqwest::Client,
+        releases: &str,
+        offline: bool,
+        installing: impl FnOnce(bool),
+    ) -> Result<Ready, String> {
+        let installed = self.installed();
+        if offline {
+            return installed
+                .map(Ready::Current)
+                .ok_or_else(|| tr::tr!("{name} has not been installed yet", name = self.name));
+        }
+        let release = match self.fetch_release(http, releases).await {
+            Ok(release) => release,
+            Err(e) => {
+                return match installed {
+                    Some(exe) => {
+                        tracing::warn!("Could not check for a {} update: {e}", self.name);
+                        Ok(Ready::Current(exe))
+                    }
+                    None => Err(e),
+                }
+            }
+        };
+        let current = self.installed_version();
+        if let (Some(exe), Some(version)) = (&installed, &current) {
+            if *version == release.tag_name {
+                return Ok(Ready::Current(exe.clone()));
+            }
+        }
+        installing(installed.is_some());
+        match self.install_release(http, release).await {
+            Ok(exe) => {
+                if let Some(old) = current.filter(|v| is_plain_name(v)) {
+                    let _ = std::fs::remove_dir_all(self.dir.join(old));
+                }
+                Ok(Ready::Installed(exe))
+            }
+            Err(e) => match installed {
+                Some(exe) => {
+                    tracing::warn!("Could not update {}: {e}", self.name);
+                    Ok(Ready::Current(exe))
+                }
+                None => Err(e),
+            },
+        }
+    }
+
+    /// `releases` is GitHub's latest release, or a list of releases for a project that only
+    /// publishes pre-releases, whose newest comes first.
+    async fn fetch_release(
+        &self,
+        http: &reqwest::Client,
+        releases: &str,
+    ) -> Result<Release, String> {
         let name = self.name;
-        let unreachable = |_| tr::tr!("Could not reach GitHub to download {name}", name);
-        let release: Release = http
+        let found: ReleaseOrList = http
             .get(releases)
             .header(reqwest::header::ACCEPT, "application/vnd.github+json")
             .send()
             .await
-            .map_err(unreachable)?
+            .map_err(|_| tr::tr!("Could not reach GitHub to download {name}", name))?
             .error_for_status()
             .map_err(|e| tr::tr!("{name} is not available right now ({e})", name, e))?
             .json()
             .await
             .map_err(|e| e.to_string())?;
+        match found {
+            ReleaseOrList::One(release) => Ok(release),
+            ReleaseOrList::List(list) => list
+                .into_iter()
+                .find(|r| (self.pick)(&r.assets).is_some())
+                .ok_or_else(|| tr::tr!("{name} has no download for this computer", name)),
+        }
+    }
+
+    async fn install_release(
+        &self,
+        http: &reqwest::Client,
+        release: Release,
+    ) -> Result<PathBuf, String> {
+        let name = self.name;
+        let unreachable = |_| tr::tr!("Could not reach GitHub to download {name}", name);
+        if !is_plain_name(&release.tag_name) {
+            return Err(format!("{name} has an unusual release name"));
+        }
         let asset = (self.pick)(&release.assets)
             .ok_or_else(|| tr::tr!("{name} has no download for this computer", name))?;
         let bytes = http
@@ -77,10 +193,13 @@ impl Emulator {
         let version_dir = self.dir.join(&release.tag_name);
         let file = asset.name.clone();
         let dir = version_dir.clone();
-        tokio::task::spawn_blocking(move || unpack(&bytes, &dir, &file))
-            .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| tr::tr!("Could not unpack {name}: {e}", name, e))?;
+        let finish = self.finish;
+        tokio::task::spawn_blocking(move || {
+            unpack(&bytes, &dir, &file).and_then(|()| finish(&dir))
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| tr::tr!("Could not unpack {name}: {e}", name, e))?;
         let exe = (self.exe_in)(&version_dir, &asset.name);
         if !exe.is_file() {
             return Err(tr::tr!(
@@ -103,6 +222,12 @@ impl Emulator {
         .map_err(|e| e.to_string())?;
         Ok(exe)
     }
+}
+
+/// A release tag becomes a folder name, so it must be one plain name that stays inside the folder.
+fn is_plain_name(tag: &str) -> bool {
+    let mut parts = Path::new(tag).components();
+    matches!(parts.next(), Some(std::path::Component::Normal(_))) && parts.next().is_none()
 }
 
 /// A release asset without a digest is refused, so a download is never installed unchecked.
@@ -169,6 +294,49 @@ fn unpack_7z(bytes: &[u8], dir: &Path, name: &str) -> Result<(), String> {
 #[cfg(not(target_os = "macos"))]
 fn unpack_7z(bytes: &[u8], dir: &Path, name: &str) -> Result<(), String> {
     extract(std::io::Cursor::new(bytes), name, dir)
+}
+
+/// Unpacks a downloaded game archive into a folder beside it and removes the archive, returning
+/// what `find_boot` picks inside it to start.
+pub fn unpack_game(
+    archive: &Path,
+    find_boot: fn(&Path) -> Option<PathBuf>,
+    nothing_to_boot: impl FnOnce() -> String,
+) -> Result<PathBuf, String> {
+    let (Some(parent), Some(stem), Some(name)) =
+        (archive.parent(), archive.file_stem(), archive.file_name())
+    else {
+        return Err(tr::tr!("The download has no name"));
+    };
+    let dir = parent.join(stem);
+    let mut unpacking = stem.to_os_string();
+    unpacking.push(".unpacking");
+    let unpacking = parent.join(unpacking);
+    let _ = std::fs::remove_dir_all(&unpacking);
+    std::fs::create_dir_all(&unpacking).map_err(|e| e.to_string())?;
+    let file = std::fs::File::open(archive).map_err(|e| e.to_string())?;
+    let unpacked = extract(
+        std::io::BufReader::new(file),
+        &name.to_string_lossy(),
+        &unpacking,
+    )
+    .map_err(|e| tr::tr!("Could not unpack the game: {e}", e))
+    .and_then(|()| find_boot(&unpacking).ok_or_else(nothing_to_boot));
+    let boot = match unpacked {
+        Ok(boot) => boot,
+        Err(e) => {
+            let _ = std::fs::remove_dir_all(&unpacking);
+            return Err(e);
+        }
+    };
+    let rel = boot
+        .strip_prefix(&unpacking)
+        .map_err(|e| e.to_string())?
+        .to_path_buf();
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::rename(&unpacking, &dir).map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_file(archive);
+    Ok(dir.join(rel))
 }
 
 /// Unpacks a .zip or .7z into `dir`, refusing entries that would land outside it.
@@ -268,6 +436,186 @@ pub fn launch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn pick(assets: &[Asset]) -> Option<&Asset> {
+        assets.iter().find(|a| a.name == "emu")
+    }
+
+    fn exe_in(dir: &Path, asset: &str) -> PathBuf {
+        dir.join(asset)
+    }
+
+    fn emulator(dir: &Path) -> Emulator {
+        Emulator {
+            name: "Emu",
+            dir: dir.to_path_buf(),
+            pick,
+            exe_in,
+            finish: nothing_more,
+        }
+    }
+
+    /// A GitHub stand-in whose latest release is `tag`, with one plain executable asset.
+    async fn github(tag: &str, binary: &[u8]) -> MockServer {
+        let server = MockServer::start().await;
+        let digest = format!("sha256:{}", crate::cores::sha256_hex(binary));
+        let release = serde_json::json!({
+            "tag_name": tag,
+            "assets": [{
+                "name": "emu",
+                "browser_download_url": format!("{}/download/{tag}/emu", server.uri()),
+                "digest": digest,
+            }],
+        });
+        Mock::given(method("GET"))
+            .and(path("/latest"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(release))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(format!("/download/{tag}/emu")))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(binary.to_vec()))
+            .mount(&server)
+            .await;
+        server
+    }
+
+    async fn ensure(emu: &Emulator, server: &MockServer, offline: bool) -> Result<Ready, String> {
+        let releases = format!("{}/latest", server.uri());
+        emu.ensure(&reqwest::Client::new(), &releases, offline, |_| {})
+            .await
+    }
+
+    #[tokio::test]
+    async fn the_first_play_installs_and_later_plays_reuse_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let emu = emulator(dir.path());
+        let server = github("v1", b"one").await;
+        let exe = dir.path().join("v1/emu");
+        assert_eq!(
+            ensure(&emu, &server, false).await,
+            Ok(Ready::Installed(exe.clone()))
+        );
+        assert_eq!(emu.installed_version().as_deref(), Some("v1"));
+        assert_eq!(ensure(&emu, &server, false).await, Ok(Ready::Current(exe)));
+    }
+
+    #[tokio::test]
+    async fn a_newer_release_replaces_the_old_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let emu = emulator(dir.path());
+        ensure(&emu, &github("v1", b"one").await, false)
+            .await
+            .unwrap();
+        let ready = ensure(&emu, &github("v2", b"two").await, false).await;
+        assert_eq!(ready, Ok(Ready::Installed(dir.path().join("v2/emu"))));
+        assert_eq!(std::fs::read(dir.path().join("v2/emu")).unwrap(), b"two");
+        assert!(!dir.path().join("v1").exists(), "the old build is removed");
+    }
+
+    #[tokio::test]
+    async fn an_installed_build_still_plays_when_github_is_down_or_offline() {
+        let dir = tempfile::tempdir().unwrap();
+        let emu = emulator(dir.path());
+        ensure(&emu, &github("v1", b"one").await, false)
+            .await
+            .unwrap();
+        let down = MockServer::start().await;
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(503))
+            .mount(&down)
+            .await;
+        let exe = dir.path().join("v1/emu");
+        assert_eq!(
+            ensure(&emu, &down, false).await,
+            Ok(Ready::Current(exe.clone()))
+        );
+        assert_eq!(ensure(&emu, &down, true).await, Ok(Ready::Current(exe)));
+    }
+
+    #[tokio::test]
+    async fn a_bad_update_keeps_the_installed_build() {
+        let dir = tempfile::tempdir().unwrap();
+        let emu = emulator(dir.path());
+        ensure(&emu, &github("v1", b"one").await, false)
+            .await
+            .unwrap();
+        let server = github("v2", b"two").await;
+        // The download no longer matches the digest GitHub published.
+        server.reset().await;
+        let release = serde_json::json!({
+            "tag_name": "v2",
+            "assets": [{
+                "name": "emu",
+                "browser_download_url": format!("{}/download/v2/emu", server.uri()),
+                "digest": format!("sha256:{}", crate::cores::sha256_hex(b"two")),
+            }],
+        });
+        Mock::given(method("GET"))
+            .and(path("/latest"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(release))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/download/v2/emu"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"tampered".to_vec()))
+            .mount(&server)
+            .await;
+        assert_eq!(
+            ensure(&emu, &server, false).await,
+            Ok(Ready::Current(dir.path().join("v1/emu")))
+        );
+        assert_eq!(emu.installed_version().as_deref(), Some("v1"));
+    }
+
+    #[tokio::test]
+    async fn a_release_list_installs_the_newest_with_a_download_for_this_computer() {
+        let server = MockServer::start().await;
+        let binary = b"nightly";
+        let list = serde_json::json!([
+            { "tag_name": "n3", "assets": [{ "name": "other", "browser_download_url": "x", "digest": null }] },
+            { "tag_name": "n2", "assets": [{
+                "name": "emu",
+                "browser_download_url": format!("{}/n2/emu", server.uri()),
+                "digest": format!("sha256:{}", crate::cores::sha256_hex(binary)),
+            }] },
+        ]);
+        Mock::given(method("GET"))
+            .and(path("/latest"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(list))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/n2/emu"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(binary.to_vec()))
+            .mount(&server)
+            .await;
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(
+            ensure(&emulator(dir.path()), &server, false).await,
+            Ok(Ready::Installed(dir.path().join("n2/emu")))
+        );
+    }
+
+    #[tokio::test]
+    async fn nothing_to_play_offline_before_the_first_install() {
+        let dir = tempfile::tempdir().unwrap();
+        let server = github("v1", b"one").await;
+        assert!(ensure(&emulator(dir.path()), &server, true).await.is_err());
+    }
+
+    #[test]
+    fn release_tags_must_be_a_single_folder_name() {
+        assert!(is_plain_name("v.0.21.0"));
+        assert!(is_plain_name("Pre-release-shadPS4-2026-11-17-a267e8f"));
+        assert!(!is_plain_name("../escape"));
+        assert!(!is_plain_name("a/b"));
+        assert!(!is_plain_name(".."));
+        assert!(!is_plain_name(""));
+    }
 
     #[test]
     fn a_download_must_match_the_digest_github_published() {

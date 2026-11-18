@@ -870,6 +870,76 @@ impl Controller {
         self.measure_storage();
     }
 
+    /// Installs or updates shadPS4 and its QtLauncher, then opens QtLauncher on RomP's shadPS4
+    /// folder, so the settings changed there apply when RomP starts a PS4 game.
+    pub(super) fn open_ps4_settings(&self) {
+        use crate::external::Ready;
+        use crate::shadps4;
+        let Some(ui) = self.ui() else { return };
+        if shadps4::rosetta_missing() {
+            ui.set_settings_ps4_status(
+                tr!("shadPS4 needs Rosetta 2. Install it by running softwareupdate --install-rosetta in Terminal, then try again.").into(),
+            );
+            return;
+        }
+        ui.set_settings_ps4_busy(true);
+        ui.set_settings_ps4_status(tr!("Getting ready…").into());
+        let http = self.shared.http.clone();
+        let offline = self.offline.get();
+        self.shared.rt.spawn(async move {
+            let status = |text: String| {
+                on_ui(move |c| {
+                    if let Some(ui) = c.ui() {
+                        ui.set_settings_ps4_status(text.into());
+                    }
+                });
+            };
+            let installing = |name: &'static str| {
+                move |update: bool| {
+                    status(if update {
+                        tr!("Updating {name}…", name)
+                    } else {
+                        tr!("Installing {name}…", name)
+                    });
+                }
+            };
+            let core = shadps4::emulator(paths::cores_dir().join("shadps4"));
+            let launcher = shadps4::launcher(paths::cores_dir().join("shadps4-qtlauncher"));
+            let result = async {
+                let exe = core
+                    .ensure(&http, shadps4::RELEASES, offline, installing("shadPS4"))
+                    .await?
+                    .exe();
+                let app = launcher
+                    .ensure(
+                        &http,
+                        shadps4::LAUNCHER_RELEASES,
+                        offline,
+                        installing("shadPS4 QtLauncher"),
+                    )
+                    .await
+                    .map(Ready::exe)?;
+                let home = shadps4::Home(paths::data_dir().join("shadps4"));
+                home.point_launcher_at(&exe)
+                    .and_then(|()| home.open_launcher(&app))
+                    .map_err(|e| {
+                        tr!(
+                            "Could not start {name}: {e}",
+                            name = "shadPS4 QtLauncher",
+                            e
+                        )
+                    })
+            }
+            .await;
+            on_ui(move |c| {
+                if let Some(ui) = c.ui() {
+                    ui.set_settings_ps4_busy(false);
+                    ui.set_settings_ps4_status(result.err().unwrap_or_default().into());
+                }
+            });
+        });
+    }
+
     pub(super) fn show_folder(&self) {
         let _ = open::that_detached(paths::data_dir());
     }

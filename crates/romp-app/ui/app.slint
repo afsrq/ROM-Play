@@ -2133,6 +2133,10 @@ component SettingsPage inherits FocusScope {
     in property <[StorageRow]> storage;
     in property <[ConsoleGroup]> consoles;
     callback console-option-changed(string, int);
+    in property <bool> ps4-settings;
+    in property <bool> ps4-settings-busy;
+    in property <string> ps4-settings-status;
+    callback open-ps4-settings();
     in property <[LookConsole]> looks;
     callback look-setting-changed(string, int, int);
     in property <string> storage-total;
@@ -2469,7 +2473,19 @@ component SettingsPage inherits FocusScope {
                                 }
                             }
                         }
-                        if root.consoles.length == 0: Text { horizontal-alignment: Locale.start;
+                        if root.ps4-settings: VerticalLayout {
+                            spacing: 8px;
+                            Text { horizontal-alignment: Locale.start; text: "PlayStation 4"; font-size: Theme.font-body-large; font-weight: 700; }
+                            Panel {
+                                SettingRow {
+                                    label: @tr("shadPS4 settings");
+                                    detail: root.ps4-settings-status != "" ? root.ps4-settings-status
+                                        : @tr("Graphics, controls, patches and more, in shadPS4's own settings app. Close it before playing; changes apply the next time you start a PS4 game.");
+                                    Button { text: @tr("Open"); enabled: !root.ps4-settings-busy; clicked => { root.open-ps4-settings(); } }
+                                }
+                            }
+                        }
+                        if root.consoles.length == 0 && !root.ps4-settings: Text { horizontal-alignment: Locale.start;
                             text: @tr("None of the emulators on this computer has settings yet.");
                             color: Theme.text-muted;
                         }
@@ -3148,6 +3164,10 @@ export component AppWindow inherits Window {
     in property <[StorageRow]> settings-storage;
     in property <[LicenseRow]> about-licenses;
     in property <[ConsoleGroup]> settings-consoles;
+    in property <bool> settings-ps4;
+    in property <bool> settings-ps4-busy;
+    in property <string> settings-ps4-status;
+    callback open-ps4-settings();
     in property <[LookConsole]> settings-looks;
     callback look-setting-changed(string, int, int);
     callback console-option-changed(string, int);
@@ -3560,6 +3580,10 @@ export component AppWindow inherits Window {
             storage-busy: root.settings-storage-busy;
             consoles: root.settings-consoles;
             console-option-changed(key, index) => { root.console-option-changed(key, index); }
+            ps4-settings: root.settings-ps4;
+            ps4-settings-busy: root.settings-ps4-busy;
+            ps4-settings-status: root.settings-ps4-status;
+            open-ps4-settings => { root.open-ps4-settings(); }
             looks: root.settings-looks;
             look-setting-changed(platform, row, index) => { root.look-setting-changed(platform, row, index); }
             pause-unfocused <=> root.pref-pause-unfocused;
