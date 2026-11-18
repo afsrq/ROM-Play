@@ -1550,6 +1550,8 @@ component GamePage inherits FocusScope {
     in property <bool> has-cover;
     in property <bool> downloaded;
     in property <bool> busy;
+    /// A game is getting ready to play or playing, so another can't start yet.
+    in property <bool> launching;
     in property <bool> playable;
     in property <bool> can-download;
     in property <float> progress;
@@ -1683,8 +1685,8 @@ component GamePage inherits FocusScope {
                             }
                             if root.busy: ProgressIndicator { width: 220px; progress: root.progress; }
                             if root.busy: Button { text: @tr("Cancel"); clicked => { root.cancel(); } }
-                            if root.downloaded && !root.busy: Button { text: @tr("Play"); primary: true; clicked => { root.play(); } }
-                            if root.downloaded && !root.busy: Button { text: @tr("Delete download"); clicked => { root.delete(); } }
+                            if root.downloaded && !root.busy: Button { text: @tr("Play"); primary: true; enabled: !root.launching; clicked => { root.play(); } }
+                            if root.downloaded && !root.busy: Button { text: @tr("Delete download"); enabled: !root.launching; clicked => { root.delete(); } }
                             if root.show-collections: Button {
                                 text: root.favorite ? @tr("♥ In favorites") : @tr("♡ Add to favorites");
                                 enabled: root.can-edit-collections;
@@ -3265,6 +3267,7 @@ export component AppWindow inherits Window {
     in property <bool> has-game-cover;
     in property <bool> game-downloaded;
     in property <bool> game-busy;
+    in property <bool> game-launching;
     in property <bool> game-playable;
     in property <bool> game-can-download;
     in property <float> game-progress;
@@ -3519,6 +3522,7 @@ export component AppWindow inherits Window {
             has-cover: root.has-game-cover;
             downloaded: root.game-downloaded;
             busy: root.game-busy;
+            launching: root.game-launching;
             playable: root.game-playable;
             can-download: root.game-can-download;
             progress: root.game-progress;

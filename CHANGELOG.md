@@ -4,6 +4,12 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-11-18
+
+### Fixed
+
+- Play is grayed out while a game gets ready to play (installing its emulator, such as shadPS4 the first time, downloading, or syncing saves) and while it runs, for every console, and turns back on when the game closes. Clicking it then did nothing before, though it looked like it would. Delete download is grayed out at the same time.
+
 ## [0.23.0] - 2026-11-18
 
 The first release of ROM Play, an emulator front end for the Mac based on RomP.
@@ -372,7 +378,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.23.1...HEAD
+[0.23.1]: https://github.com/afsrq/ROM-Play/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/afsrq/ROM-Play/releases/tag/v0.23.0
 [0.22.0]: https://github.com/RompEmu/RomP/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/RompEmu/RomP/compare/v0.20.0...v0.21.0

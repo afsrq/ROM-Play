@@ -138,7 +138,7 @@ impl Controller {
 
     pub(super) fn clear_conflict(&self) {
         if self.pending_launch.borrow_mut().take().is_some() {
-            self.preparing.set(false);
+            self.set_preparing(false);
         }
         if let Some(ui) = self.ui() {
             ui.set_save_conflict(false);
@@ -163,7 +163,7 @@ impl Controller {
             self.sync_device(),
             self.game_saves(&pending.detail),
         ) else {
-            self.preparing.set(false);
+            self.set_preparing(false);
             if let Some(ui) = self.ui() {
                 ui.set_save_conflict(false);
             }

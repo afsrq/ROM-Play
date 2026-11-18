@@ -674,7 +674,7 @@ impl Controller {
             return;
         };
         self.requested_slot.set(slot);
-        self.preparing.set(true);
+        self.set_preparing(true);
         ui.set_game_status(tr!("Getting ready…").into());
         let cores = self.shared.cores.clone();
         let http = self.shared.http.clone();
@@ -764,7 +764,7 @@ impl Controller {
     }
 
     fn play_with_xemu(&self, detail: GameDetail, rom: PathBuf) {
-        self.preparing.set(true);
+        self.set_preparing(true);
         self.game_status(detail.id, tr!("Getting ready…"));
         let http = self.shared.http.clone();
         let client = self.client.borrow().clone();
@@ -817,7 +817,7 @@ impl Controller {
         ready: Result<(PathBuf, PathBuf), String>,
         missing: Vec<String>,
     ) {
-        self.preparing.set(false);
+        self.set_preparing(false);
         let (exe, template) = match ready {
             Ok(paths) => paths,
             Err(e) => return self.game_status(detail.id, e),
@@ -874,6 +874,7 @@ impl Controller {
         match xemu::launch(&exe, &config_path, &rom, prefs.fullscreen, on_exit) {
             Ok(running) => {
                 *self.running.borrow_mut() = Some(play::RunningGame::External(running));
+                self.refresh_play_button();
                 self.game_status(detail.id, String::new());
                 self.record_play(detail.id);
                 *self.playing.borrow_mut() = Some(detail);
@@ -886,7 +887,7 @@ impl Controller {
     }
 
     fn play_with_rpcs3(&self, detail: GameDetail, rom: PathBuf) {
-        self.preparing.set(true);
+        self.set_preparing(true);
         self.game_status(detail.id, tr!("Getting ready…"));
         let http = self.shared.http.clone();
         let client = self.client.borrow().clone();
@@ -947,7 +948,7 @@ impl Controller {
         ready: Result<PathBuf, String>,
         missing: Vec<String>,
     ) {
-        self.preparing.set(false);
+        self.set_preparing(false);
         let exe = match ready {
             Ok(exe) => exe,
             Err(e) => return self.game_status(detail.id, e),
@@ -1001,6 +1002,7 @@ impl Controller {
         match rpcs3::launch(&exe, &home, &config_path, &boot, prefs.fullscreen, on_exit) {
             Ok(running) => {
                 *self.running.borrow_mut() = Some(play::RunningGame::External(running));
+                self.refresh_play_button();
                 self.game_status(detail.id, String::new());
                 self.record_play(detail.id);
                 *self.playing.borrow_mut() = Some(detail);
@@ -1019,7 +1021,7 @@ impl Controller {
                 tr!("shadPS4 needs Rosetta 2. Install it by running softwareupdate --install-rosetta in Terminal, then try again."),
             );
         }
-        self.preparing.set(true);
+        self.set_preparing(true);
         self.game_status(detail.id, tr!("Getting ready…"));
         let http = self.shared.http.clone();
         let offline = self.offline.get();
@@ -1040,7 +1042,7 @@ impl Controller {
     }
 
     fn launch_shadps4(&self, detail: GameDetail, rom: PathBuf, ready: Result<PathBuf, String>) {
-        self.preparing.set(false);
+        self.set_preparing(false);
         let exe = match ready {
             Ok(exe) => exe,
             Err(e) => return self.game_status(detail.id, e),
@@ -1060,6 +1062,7 @@ impl Controller {
         match shadps4::launch(&exe, &home, &boot, fullscreen, on_exit) {
             Ok(running) => {
                 *self.running.borrow_mut() = Some(play::RunningGame::External(running));
+                self.refresh_play_button();
                 self.game_status(detail.id, String::new());
                 self.record_play(detail.id);
                 *self.playing.borrow_mut() = Some(detail);
@@ -1256,12 +1259,12 @@ impl Controller {
         let core = match core_path {
             Ok(path) => path,
             Err(e) => {
-                self.preparing.set(false);
+                self.set_preparing(false);
                 return self.game_status(detail.id, e);
             }
         };
         if !missing.is_empty() {
-            self.preparing.set(false);
+            self.set_preparing(false);
             return self.game_status(detail.id, bios::missing_message(&missing));
         }
         match sram {
@@ -1309,7 +1312,7 @@ impl Controller {
     }
 
     pub(super) fn start_game(&self, detail: GameDetail, rom: PathBuf, jit: bool, core: PathBuf) {
-        self.preparing.set(false);
+        self.set_preparing(false);
         let saves = self.game_saves(&detail);
         if let Some(game) = &saves {
             if let Err(e) = crate::saves::make_save_folder(game) {
@@ -1431,6 +1434,7 @@ impl Controller {
         match play::launch(options, on_closed, open_controllers) {
             Ok(running) => {
                 *self.running.borrow_mut() = Some(running);
+                self.refresh_play_button();
                 *self.game_mappings.borrow_mut() =
                     Some((detail.platform_slug.clone(), game_mappings));
                 self.game_status(detail.id, String::new());
@@ -1444,8 +1448,24 @@ impl Controller {
         }
     }
 
+    /// Marks a game as getting ready to play, or no longer, and grays out Play to match.
+    pub(super) fn set_preparing(&self, preparing: bool) {
+        self.preparing.set(preparing);
+        self.refresh_play_button();
+    }
+
+    /// Play is grayed out from the moment a game starts getting ready (installing its
+    /// emulator, downloading, syncing saves) until it closes, for every console, since only one
+    /// game plays at a time.
+    pub(super) fn refresh_play_button(&self) {
+        if let Some(ui) = self.ui() {
+            ui.set_game_launching(self.preparing.get() || self.running.borrow().is_some());
+        }
+    }
+
     fn game_closed(&self, identity: Option<CoreIdentity>) {
         self.running.borrow_mut().take();
+        self.refresh_play_button();
         self.game_mappings.borrow_mut().take();
         self.end_session();
         self.pump_installs();
