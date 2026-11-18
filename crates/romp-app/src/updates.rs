@@ -59,6 +59,9 @@ pub struct Release {
     pub version: String,
     pub page: String,
     pub download: Option<String>,
+    /// `sha256:<hex>` of the download, which GitHub computes when it is uploaded.
+    #[serde(default)]
+    pub digest: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -120,15 +123,12 @@ fn release_from(found: GitHubRelease, platform: Platform) -> Option<Release> {
     let (major, minor, patch) = version(&found.tag_name)?;
     let version = format!("{major}.{minor}.{patch}");
     let file = platform.asset_name(&version);
-    let download = found
-        .assets
-        .into_iter()
-        .find(|a| a.name == file)
-        .map(|a| a.browser_download_url);
+    let asset = found.assets.into_iter().find(|a| a.name == file);
     Some(Release {
         version,
         page: found.html_url,
-        download,
+        digest: asset.as_ref().and_then(|a| a.digest.clone()),
+        download: asset.map(|a| a.browser_download_url),
     })
 }
 
@@ -212,6 +212,7 @@ mod tests {
             version: version.into(),
             page: format!("https://github.com/afsrq/ROM-Play/releases/tag/v{version}"),
             download: None,
+            digest: None,
         }
     }
 

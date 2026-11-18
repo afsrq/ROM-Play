@@ -158,6 +158,8 @@ struct Controller {
     restore_view: RefCell<Option<LastView>>,
     pending_top: Cell<Option<(i64, Instant)>>,
     update_dismissed: Cell<bool>,
+    /// A newer ROM Play is downloading in the background, to install when it restarts.
+    update_staging: Cell<bool>,
 }
 
 thread_local! {
@@ -282,6 +284,7 @@ pub fn run() -> anyhow::Result<()> {
         restore_view: RefCell::new(last_view),
         pending_top: Cell::new(None),
         update_dismissed: Cell::new(false),
+        update_staging: Cell::new(false),
     });
     ui.set_rows(ModelRc::from(controller.library.borrow().rows.clone()));
     CONTROLLER.with(|c| *c.borrow_mut() = Some(controller.clone()));
@@ -319,8 +322,11 @@ pub fn run() -> anyhow::Result<()> {
             }
         }
     });
+    crate::self_update::install_when_exiting();
     slint::run_event_loop()?;
     controller.save_session();
+    // An update downloaded while ROM Play ran goes in as it quits, so the next start is the new one.
+    crate::self_update::install_pending_now();
     ui.hide()?;
     CONTROLLER.with(|c| c.borrow_mut().take());
     Ok(())
@@ -344,6 +350,8 @@ impl Controller {
         ui.on_retry_pairing(|| with_controller(|c| c.connect()));
         ui.on_sign_out(|| with_controller(|c| c.sign_out()));
         ui.on_update_download(|| with_controller(|c| c.download_update()));
+        ui.on_update_restart(|| with_controller(|c| c.restart_to_update()));
+        ui.on_check_updates_now(|| with_controller(|c| c.check_updates_now()));
         ui.on_update_notes(|| with_controller(|c| c.open_update_notes()));
         ui.on_update_skip(|| with_controller(|c| c.skip_update()));
         ui.on_update_dismiss(|| with_controller(|c| c.dismiss_update()));
@@ -470,6 +478,7 @@ impl Controller {
     fn start(&self) {
         self.send_pending_unlocks();
         self.check_for_updates();
+        self.recheck_for_updates_now_and_then();
         self.start_notifications();
         let server = self.shared.store.lock().unwrap().get("server");
         let token = server.as_deref().and_then(|s| self.shared.tokens.load(s));

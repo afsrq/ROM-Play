@@ -4,6 +4,12 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-18
+
+### Added
+
+- ROM Play updates itself on a Mac. When it finds a newer version, it downloads it in the background, checks it against GitHub's checksum and its signature, and shows that it's ready. Restart to update puts it in place and opens the new version; otherwise it goes in when you next quit ROM Play. Settings has a Check now button, and ROM Play also looks again every few hours while it stays open. Updating from 0.23.1 or earlier still takes one download by hand.
+
 ## [0.23.1] - 2026-11-18
 
 ### Fixed
@@ -378,7 +384,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.23.1...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/afsrq/ROM-Play/compare/v0.23.1...v0.24.0
 [0.23.1]: https://github.com/afsrq/ROM-Play/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/afsrq/ROM-Play/releases/tag/v0.23.0
 [0.22.0]: https://github.com/RompEmu/RomP/compare/v0.21.0...v0.22.0

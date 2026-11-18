@@ -47,6 +47,7 @@ mod rumble;
 mod saves;
 mod scale;
 mod screenshot;
+mod self_update;
 mod session;
 mod shading;
 mod shadps4;

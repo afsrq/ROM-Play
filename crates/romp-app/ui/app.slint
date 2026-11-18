@@ -869,6 +869,12 @@ component Library inherits Rectangle {
     in property <string> update-version;
     in property <bool> update-homebrew;
     callback update-download();
+    /// A newer ROM Play is downloaded and checked, and installs when ROM Play restarts.
+    in property <bool> update-ready;
+    in property <bool> update-downloading;
+    /// A game is getting ready or playing, which an update waits for.
+    in property <bool> game-running;
+    callback update-restart();
     callback update-notes();
     callback update-skip();
     callback update-dismiss();
@@ -1290,7 +1296,9 @@ component Library inherits Rectangle {
                                 horizontal-alignment: Locale.start;
                                 vertical-alignment: center;
                                 horizontal-stretch: 1;
-                                text: root.update-homebrew
+                                text: root.update-ready ? @tr("ROM Play {} is ready to install.", root.update-version)
+                                    : root.update-downloading ? @tr("Downloading ROM Play {}…", root.update-version)
+                                    : root.update-homebrew
                                     ? @tr("ROM Play {} is available. Run “brew upgrade romp” to update.", root.update-version)
                                     : @tr("ROM Play {} is available.", root.update-version);
                                 font-size: Theme.font-small;
@@ -1298,7 +1306,8 @@ component Library inherits Rectangle {
                                 color: Theme.accent-text;
                                 overflow: elide;
                             }
-                            if !root.update-homebrew: Button { text: @tr("Download"); primary: true; clicked => { root.update-download(); } }
+                            if root.update-ready: Button { text: @tr("Restart to update"); primary: true; enabled: !root.game-running; clicked => { root.update-restart(); } }
+                            if !root.update-ready && !root.update-downloading && !root.update-homebrew: Button { text: @tr("Download"); primary: true; clicked => { root.update-download(); } }
                             Button { text: @tr("What's new"); clicked => { root.update-notes(); } }
                             Button { text: @tr("Skip this version"); clicked => { root.update-skip(); } }
                             IconButton { icon: @image-url("icons/close.svg"); tooltip: @tr("Hide until ROM Play restarts"); clicked => { root.update-dismiss(); } }
@@ -2149,6 +2158,8 @@ component SettingsPage inherits FocusScope {
     in-out property <bool> resume;
     in-out property <bool> fullscreen;
     in-out property <bool> check-updates;
+    in property <string> update-status;
+    callback check-updates-now();
     in-out property <bool> accept-installs;
     in-out property <float> volume;
     in-out property <int> ui-scale;
@@ -2283,8 +2294,14 @@ component SettingsPage inherits FocusScope {
                         Panel {
                             SettingRow {
                                 label: @tr("Check for updates");
-                                detail: @tr("Once a day, ROM Play asks GitHub for its newest version, and tells you when there is one.");
-                                Switch { checked <=> root.check-updates; toggled => { root.prefs-changed(); } }
+                                detail: root.update-status != "" ? root.update-status
+                                    : @tr("Once a day, ROM Play asks GitHub for its newest version, downloads it, and installs it when ROM Play restarts.");
+                                HorizontalLayout {
+                                    spacing: 10px;
+                                    alignment: end;
+                                    Button { text: @tr("Check now"); clicked => { root.check-updates-now(); } }
+                                    Switch { checked <=> root.check-updates; toggled => { root.prefs-changed(); } }
+                                }
                             }
                         }
                         Row {
@@ -3304,10 +3321,15 @@ export component AppWindow inherits Window {
     in property <bool> update-shown;
     in property <string> update-version;
     in property <bool> update-homebrew;
+    in property <bool> update-ready;
+    in property <bool> update-downloading;
     callback update-download();
+    callback update-restart();
     callback update-notes();
     callback update-skip();
     callback update-dismiss();
+    in property <string> settings-update-status;
+    callback check-updates-now();
     in property <string> pair-prompt;
     callback pair-again();
     in property <bool> show-collections;
@@ -3471,6 +3493,10 @@ export component AppWindow inherits Window {
         update-version: root.update-version;
         update-homebrew: root.update-homebrew;
         update-download => { root.update-download(); }
+        update-ready: root.update-ready;
+        update-downloading: root.update-downloading;
+        game-running: root.game-launching;
+        update-restart => { root.update-restart(); }
         update-notes => { root.update-notes(); }
         update-skip => { root.update-skip(); }
         update-dismiss => { root.update-dismiss(); }
@@ -3596,6 +3622,8 @@ export component AppWindow inherits Window {
             resume <=> root.pref-resume;
             fullscreen <=> root.pref-fullscreen;
             check-updates <=> root.pref-check-updates;
+            update-status: root.settings-update-status;
+            check-updates-now => { root.check-updates-now(); }
             accept-installs <=> root.pref-accept-installs;
             volume <=> root.pref-volume;
             ui-scale <=> root.pref-ui-scale;
