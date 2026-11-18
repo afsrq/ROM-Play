@@ -2,7 +2,7 @@
 use crate::external::Asset;
 use serde::{Deserialize, Serialize};
 
-pub const RELEASES: &str = "https://api.github.com/repos/afsrq/RomP-Enhanced/releases/latest";
+pub const RELEASES: &str = "https://api.github.com/repos/afsrq/ROM-Play/releases/latest";
 pub const STATE_KEY: &str = "updates";
 const CHECK_EVERY: i64 = 24 * 60 * 60;
 
@@ -180,7 +180,7 @@ mod tests {
     fn github(tag: &str, names: &[&str]) -> GitHubRelease {
         GitHubRelease {
             tag_name: tag.into(),
-            html_url: format!("https://github.com/afsrq/RomP-Enhanced/releases/tag/{tag}"),
+            html_url: format!("https://github.com/afsrq/ROM-Play/releases/tag/{tag}"),
             assets: names
                 .iter()
                 .map(|name| Asset {
@@ -210,7 +210,7 @@ mod tests {
     fn release(version: &str) -> Release {
         Release {
             version: version.into(),
-            page: format!("https://github.com/afsrq/RomP-Enhanced/releases/tag/v{version}"),
+            page: format!("https://github.com/afsrq/ROM-Play/releases/tag/v{version}"),
             download: None,
         }
     }
@@ -264,7 +264,7 @@ mod tests {
         assert_eq!(found.version, "0.14.0");
         assert_eq!(
             found.page,
-            "https://github.com/afsrq/RomP-Enhanced/releases/tag/v0.14.0"
+            "https://github.com/afsrq/ROM-Play/releases/tag/v0.14.0"
         );
         assert_eq!(found.download, None);
     }
@@ -330,12 +330,12 @@ mod tests {
         let server = MockServer::start().await;
         let body = serde_json::json!({
             "tag_name": "v0.13.1",
-            "html_url": "https://github.com/afsrq/RomP-Enhanced/releases/tag/v0.13.1",
+            "html_url": "https://github.com/afsrq/ROM-Play/releases/tag/v0.13.1",
             "prerelease": false,
             "draft": false,
             "assets": ALL_FILES.iter().map(|name| serde_json::json!({
                 "name": name,
-                "browser_download_url": format!("https://github.com/afsrq/RomP-Enhanced/releases/download/v0.13.1/{name}"),
+                "browser_download_url": format!("https://github.com/afsrq/ROM-Play/releases/download/v0.13.1/{name}"),
                 "digest": "sha256:00",
             })).collect::<Vec<_>>(),
         });
@@ -355,7 +355,7 @@ mod tests {
         assert_eq!(found.version, "0.13.1");
         assert_eq!(
             found.download.as_deref(),
-            Some("https://github.com/afsrq/RomP-Enhanced/releases/download/v0.13.1/ROM-Play-0.13.1-windows-x86_64.zip")
+            Some("https://github.com/afsrq/ROM-Play/releases/download/v0.13.1/ROM-Play-0.13.1-windows-x86_64.zip")
         );
     }
 

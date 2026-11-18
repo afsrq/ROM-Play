@@ -35,4 +35,4 @@ Changes to this policy are part of ROM Play's source history, and each release's
 
 ## Contact
 
-Questions about privacy can go to [ROM Play's issues on GitHub](https://github.com/afsrq/RomP-Enhanced/issues).
+Questions about privacy can go to [ROM Play's issues on GitHub](https://github.com/afsrq/ROM-Play/issues).

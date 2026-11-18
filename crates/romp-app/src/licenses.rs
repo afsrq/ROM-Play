@@ -13,7 +13,7 @@ const fn notice(name: &'static str, license: &'static str, url: &'static str) ->
 const ROM_PLAY: Notice = notice(
     "ROM Play",
     "GPL-3.0 or later",
-    "https://github.com/afsrq/RomP-Enhanced/blob/main/LICENSE",
+    "https://github.com/afsrq/ROM-Play/blob/main/LICENSE",
 );
 /// The project ROM Play is a fork of.
 const ROMP: Notice = notice(

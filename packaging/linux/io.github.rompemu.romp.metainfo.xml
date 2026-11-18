@@ -23,8 +23,8 @@
   <provides>
     <binary>romp</binary>
   </provides>
-  <url type="homepage">https://github.com/afsrq/RomP-Enhanced</url>
-  <url type="bugtracker">https://github.com/afsrq/RomP-Enhanced/issues</url>
+  <url type="homepage">https://github.com/afsrq/ROM-Play</url>
+  <url type="bugtracker">https://github.com/afsrq/ROM-Play/issues</url>
   <url type="translate">https://crowdin.com/project/romp</url>
   <categories>
     <category>Game</category>
@@ -33,19 +33,19 @@
   <screenshots>
     <screenshot type="default">
       <caption>The library, showing Amiga games</caption>
-      <image>https://raw.githubusercontent.com/afsrq/RomP-Enhanced/main/docs/screenshots/library.png</image>
+      <image>https://raw.githubusercontent.com/afsrq/ROM-Play/main/docs/screenshots/library.png</image>
     </screenshot>
     <screenshot>
       <caption>A game's page with its details and cover</caption>
-      <image>https://raw.githubusercontent.com/afsrq/RomP-Enhanced/main/docs/screenshots/game-page.png</image>
+      <image>https://raw.githubusercontent.com/afsrq/ROM-Play/main/docs/screenshots/game-page.png</image>
     </screenshot>
     <screenshot>
       <caption>A game running in its own window</caption>
-      <image>https://raw.githubusercontent.com/afsrq/RomP-Enhanced/main/docs/screenshots/gameplay.png</image>
+      <image>https://raw.githubusercontent.com/afsrq/ROM-Play/main/docs/screenshots/gameplay.png</image>
     </screenshot>
     <screenshot>
       <caption>A Nintendo DS game with its two screens in separate windows</caption>
-      <image>https://raw.githubusercontent.com/afsrq/RomP-Enhanced/main/docs/screenshots/nintendo-ds.png</image>
+      <image>https://raw.githubusercontent.com/afsrq/ROM-Play/main/docs/screenshots/nintendo-ds.png</image>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1"/>

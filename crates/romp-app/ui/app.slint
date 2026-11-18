@@ -53,8 +53,8 @@ component PadBadge inherits Rectangle {
 
 export global Brand {
     out property <string> name: "ROM Play";
-    out property <string> website: "https://github.com/afsrq/RomP-Enhanced";
-    out property <string> website-label: "github.com/afsrq/RomP-Enhanced";
+    out property <string> website: "https://github.com/afsrq/ROM-Play";
+    out property <string> website-label: "github.com/afsrq/ROM-Play";
     // ROM Play is a fork of RomP, which it credits in About.
     out property <string> upstream-website: "https://github.com/RompEmu/RomP";
     out property <string> author: "Beshr Kayali Reinholdsson";
@@ -3675,7 +3675,7 @@ export component AppWindow inherits Window {
         notes: root.whats-new-notes;
         show-after-updates <=> root.whats-new-after-updates;
         show-after-updates-toggled(on) => { root.whats-new-after-updates-toggled(on); }
-        open-changelog => { root.open-url("https://github.com/afsrq/RomP-Enhanced/blob/main/CHANGELOG.md"); }
+        open-changelog => { root.open-url("https://github.com/afsrq/ROM-Play/blob/main/CHANGELOG.md"); }
         close => { root.whats-new-open = false; }
     }
     if root.dialog-open: Dialog {

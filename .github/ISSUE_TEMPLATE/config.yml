@@ -10,5 +10,5 @@ contact_links:
     url: https://github.com/rommapp/romm/issues
     about: Problems that also happen in RomM's own web pages belong with RomM.
   - name: Security problem
-    url: https://github.com/afsrq/RomP-Enhanced/security/advisories/new
+    url: https://github.com/afsrq/ROM-Play/security/advisories/new
     about: Report it privately, so it can be fixed before it's public.

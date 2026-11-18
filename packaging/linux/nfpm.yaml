@@ -7,7 +7,7 @@ version: ${ROMP_VERSION}
 section: games
 maintainer: Beshr Kayali Reinholdsson <me@beshr.com>
 description: Play retro games from your RomM library, with each game running in its own sandboxed process.
-homepage: https://github.com/afsrq/RomP-Enhanced
+homepage: https://github.com/afsrq/ROM-Play
 license: GPL-3.0-or-later
 
 contents:
