@@ -1,8 +1,22 @@
 # Changelog
 
-All notable changes to Romp are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Romp uses [semantic versioning](https://semver.org/).
+All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, which ROM Play is based on. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and ROM Play uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.23.0] - 2026-11-18
+
+The first release of ROM Play, an emulator front end for the Mac based on RomP.
+
+### Added
+
+- PlayStation 4 games play with shadPS4. ROM Play installs it and starts a game from its installed game folder (the one with eboot.bin), or a zip or 7z of one. shadPS4 runs on Apple Silicon Macs with macOS 26 or newer, through Rosetta 2.
+- Settings → Consoles has a shadPS4 settings button, which opens the shadPS4 QtLauncher on ROM Play's copy of shadPS4 for its graphics, controls, patches and more.
+- Before a game starts, ROM Play checks for a newer shadPS4, RPCS3 or xemu and installs it. Offline, or when an update fails, it plays with the version it has.
+
+### Changed
+
+- RomP is now ROM Play, with a new icon. It keeps its own settings, sign-ins and downloads, apart from RomP's, so the first time you open it, you connect it to RomM again. It looks for its updates on github.com/afsrq/ROM-Play.
 
 ## [0.22.0] - 2026-11-15
 
@@ -358,7 +372,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/RompEmu/RomP/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/afsrq/ROM-Play/releases/tag/v0.23.0
 [0.22.0]: https://github.com/RompEmu/RomP/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/RompEmu/RomP/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/RompEmu/RomP/compare/v0.19.0...v0.20.0

@@ -27,6 +27,7 @@ NFPM := target/nfpm-$(NFPM_VERSION)
 APP := $(DIST)/ROM\ Play.app
 ICONSET := $(DIST)/ROMPlay.iconset
 MACOS_ZIP := $(DIST)/ROM-Play-$(RELEASE)-macos-$(ARCH).zip
+MACOS_DMG := $(DIST)/ROM-Play-$(RELEASE)-macos-$(ARCH).dmg
 LINUX_NAME := ROM-Play-$(RELEASE)-linux-$(ARCH)
 LINUX_TAR := $(DIST)/$(LINUX_NAME).tar.gz
 APPDIR := $(DIST)/ROMPlay.AppDir
@@ -64,7 +65,18 @@ ditto -c -k --keepParent $(APP) $(MACOS_ZIP)
 $(call checksum,$(MACOS_ZIP))
 endef
 
-.PHONY: build app appimage packages glibc-check dist dist-macos dist-linux dist-windows clean
+# A disk image to drag ROM Play into Applications from, for downloading by hand.
+define dmg_app
+rm -rf $(DIST)/dmg $(MACOS_DMG)
+mkdir -p $(DIST)/dmg
+ditto $(APP) "$(DIST)/dmg/ROM Play.app"
+ln -s /Applications $(DIST)/dmg/Applications
+hdiutil create -volname "ROM Play" -srcfolder $(DIST)/dmg -fs HFS+ -format UDZO -ov $(MACOS_DMG)
+rm -rf $(DIST)/dmg
+$(call checksum,$(MACOS_DMG))
+endef
+
+.PHONY: build app dmg appimage packages glibc-check dist dist-macos dist-linux dist-windows clean
 .PHONY: check fmt-check clippy test deny typos workflows translation-tools translations translations-check pseudo release-notes update-rcheevos
 
 build:
@@ -125,6 +137,10 @@ dist: dist-$(PLATFORM)
 
 dist-macos: app
 	$(zip_app)
+	$(dmg_app)
+
+dmg: app
+	$(dmg_app)
 
 appimage: build $(APPIMAGETOOL) $(APPIMAGE_RUNTIME)
 	rm -rf $(APPDIR) $(APPIMAGE)
