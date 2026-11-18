@@ -378,6 +378,8 @@ impl Controller {
         ui.on_remap_console_search(|q| with_controller(|c| c.remap_console_search(q.to_string())));
         ui.on_remap_close(|| with_controller(|c| c.remap_close()));
         ui.on_show_folder(|| with_controller(|c| c.show_folder()));
+        ui.on_open_ps4_settings(|| with_controller(|c| c.open_ps4_settings()));
+        ui.set_settings_ps4(crate::shadps4::launcher_available());
         ui.on_show_log(|| with_controller(|c| c.show_log()));
         ui.on_open_whats_new(|| with_controller(|c| c.show_whats_new()));
         ui.on_whats_new_after_updates_toggled(|on| {

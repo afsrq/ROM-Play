@@ -363,16 +363,21 @@ impl Xemu {
                 dir,
                 pick: release_asset,
                 exe_in,
+                finish: crate::external::nothing_more,
             },
         }
     }
 
-    pub fn installed(&self) -> Option<PathBuf> {
-        self.emulator.installed()
-    }
-
-    pub async fn install(&self, http: &reqwest::Client, releases: &str) -> Result<PathBuf, String> {
-        self.emulator.install(http, releases).await
+    pub async fn ensure(
+        &self,
+        http: &reqwest::Client,
+        releases: &str,
+        offline: bool,
+        installing: impl FnOnce(bool),
+    ) -> Result<crate::external::Ready, String> {
+        self.emulator
+            .ensure(http, releases, offline, installing)
+            .await
     }
 
     pub fn hdd_template(&self) -> PathBuf {
@@ -588,13 +593,15 @@ mod tests {
             .await;
         let dir = tempfile::tempdir().unwrap();
         let xemu = Xemu::new(dir.path().to_path_buf());
-        assert!(xemu.installed().is_none());
+        assert!(xemu.emulator.installed().is_none());
+        let latest = format!("{}/latest", server.uri());
         let exe = xemu
-            .install(&reqwest::Client::new(), &format!("{}/latest", server.uri()))
+            .ensure(&reqwest::Client::new(), &latest, false, |_| {})
             .await
-            .unwrap();
+            .unwrap()
+            .exe();
         assert_eq!(exe, dir.path().join("v0.9.0/xemu.app/Contents/MacOS/xemu"));
-        assert_eq!(xemu.installed(), Some(exe));
+        assert_eq!(xemu.emulator.installed(), Some(exe));
     }
 
     #[tokio::test]

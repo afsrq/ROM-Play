@@ -76,7 +76,9 @@ fn is_extra(p: &Path) -> bool {
 
 pub fn launch_target(rom: &RomDetail, files: &[(PathBuf, u64)]) -> Option<Launch> {
     let depth = |p: &PathBuf| p.components().count();
-    if rom.platform_slug == crate::rpcs3::PLATFORM {
+    if rom.platform_slug == crate::rpcs3::PLATFORM
+        || crate::shadps4::is_platform(&rom.platform_slug)
+    {
         let eboot = files
             .iter()
             .map(|(p, _)| p)
@@ -202,7 +204,10 @@ fn is_track(p: &Path, files: &[PlannedFile]) -> bool {
 pub fn file_choices(rom: &RomDetail, files: &[PlannedFile]) -> Vec<PathBuf> {
     // RomM counts only the files at the top of a game's folder as multiple, so a game with
     // translations or hacks in sub-folders is still worth looking through.
-    if files.len() < 2 || rom.platform_slug == crate::rpcs3::PLATFORM {
+    if files.len() < 2
+        || rom.platform_slug == crate::rpcs3::PLATFORM
+        || crate::shadps4::is_platform(&rom.platform_slug)
+    {
         return Vec::new();
     }
     let sized: Vec<(PathBuf, u64)> = files
