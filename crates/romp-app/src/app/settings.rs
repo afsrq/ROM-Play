@@ -866,6 +866,7 @@ impl Controller {
 
     pub(super) fn clear_images(&self) {
         storage::clear_dir(&paths::covers_dir());
+        self.restore_local_icons();
         self.icon_requests.borrow_mut().clear();
         self.measure_storage();
     }

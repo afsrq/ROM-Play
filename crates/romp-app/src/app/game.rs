@@ -224,6 +224,9 @@ impl Controller {
 
     /// Looks up once which files a multi-file game can start with, for its page's file menu.
     fn load_file_choices(&self, id: i64) {
+        if crate::local_games::is_local(id) {
+            return;
+        }
         let client = self.client.borrow().clone();
         let Some(client) = client.filter(|_| !self.offline.get()) else {
             return;
@@ -351,8 +354,12 @@ impl Controller {
                 }
             }
         }
-        let playable = playable(&detail.platform_slug);
+        let local = crate::local_games::is_local(detail.id);
+        let local_app =
+            local && downloaded_path(&detail).is_some_and(|p| crate::local_games::is_app(&p));
+        let playable = local_app || playable(&detail.platform_slug);
         let busy = self.downloading_id() == Some(detail.id);
+        ui.set_game_local(local);
         ui.set_game_title(detail.title.clone().into());
         ui.set_game_category(
             details::category(detail.platform_category.as_deref().unwrap_or_default())
@@ -388,6 +395,10 @@ impl Controller {
             ui.set_game_status(tr!("ROM Play can't play {} games yet.", detail.platform).into());
         } else if self.downloading_id().is_some_and(|d| d != detail.id) {
             ui.set_game_status(tr!("Another download is in progress.").into());
+        } else if local && downloaded_path(&detail).is_none() {
+            ui.set_game_status(
+                tr!("This game's file isn't where it was added from anymore. Remove it and add it again.").into(),
+            );
         } else if self.offline.get() && downloaded_path(&detail).is_none() {
             ui.set_game_status(tr!("Connect to your server to download this game.").into());
         }
@@ -661,6 +672,9 @@ impl Controller {
         let Some(rom) = downloaded_path(&detail) else {
             return;
         };
+        if crate::local_games::is_app(&rom) {
+            return self.play_local_app(detail, rom);
+        }
         if detail.platform_slug == xemu::PLATFORM {
             return self.play_with_xemu(detail, rom);
         }
@@ -737,7 +751,8 @@ impl Controller {
                     }
                 }
             }
-            if let (Some(client), true) = (&client, achievements && !offline) {
+            let romm_game = !crate::local_games::is_local(id);
+            if let (Some(client), true) = (&client, achievements && !offline && romm_game) {
                 if let Ok(rom) = client.rom_detail(id).await {
                     if let Some(hash) = rom.ra_hash.filter(|h| !h.is_empty()) {
                         on_ui(move |c| *c.ra_hash.borrow_mut() = Some((id, hash)));
@@ -1074,7 +1089,7 @@ impl Controller {
         }
     }
 
-    fn external_closed(&self, id: i64, name: &str, code: Option<i32>, log: Vec<String>) {
+    pub(super) fn external_closed(&self, id: i64, name: &str, code: Option<i32>, log: Vec<String>) {
         self.game_closed(None);
         if code != Some(0) {
             let detail = log.last().cloned().unwrap_or_default();

@@ -25,6 +25,7 @@ mod installs;
 mod keyboard;
 mod layout;
 mod licenses;
+mod local_games;
 mod logs;
 mod looks;
 mod mapping;

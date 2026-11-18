@@ -812,6 +812,7 @@ component Library inherits Rectangle {
     in property <image> app-icon;
     in property <bool> has-app-icon;
     callback open-about();
+    callback add-local-game();
     in property <bool> page-open;
     public function focus-search() { search-field.focus(); }
     // A narrow window always shows the sidebar as a rail of icons; a wider one as the player left it.
@@ -1097,6 +1098,10 @@ component Library inherits Rectangle {
                     }
                     Row {
                         alignment: center;
+                        IconButton { icon: @image-url("icons/add.svg"); tooltip: @tr("Add a game from this Mac"); clicked => { root.add-local-game(); } }
+                    }
+                    Row {
+                        alignment: center;
                         IconButton { icon: @image-url("icons/info.svg"); tooltip: @tr("About"); clicked => { root.open-about(); } }
                     }
                     Row {
@@ -1125,6 +1130,7 @@ component Library inherits Rectangle {
                         }
                     }
                     if root.notifications-shown: BellButton { unread: root.notifications-unread; clicked => { root.open-notifications(); } }
+                    IconButton { icon: @image-url("icons/add.svg"); tooltip: @tr("Add a game from this Mac"); clicked => { root.add-local-game(); } }
                     IconButton { icon: @image-url("icons/info.svg"); tooltip: @tr("About"); clicked => { root.open-about(); } }
                     IconButton { icon: @image-url("icons/settings.svg"); tooltip: @tr("Settings"); clicked => { root.open-settings(); } }
                 }
@@ -1561,6 +1567,9 @@ component GamePage inherits FocusScope {
     in property <bool> busy;
     /// A game is getting ready to play or playing, so another can't start yet.
     in property <bool> launching;
+    /// A game added from this computer, not RomM: removing it leaves its files alone.
+    in property <bool> local;
+    callback remove-local();
     in property <bool> playable;
     in property <bool> can-download;
     in property <float> progress;
@@ -1695,7 +1704,8 @@ component GamePage inherits FocusScope {
                             if root.busy: ProgressIndicator { width: 220px; progress: root.progress; }
                             if root.busy: Button { text: @tr("Cancel"); clicked => { root.cancel(); } }
                             if root.downloaded && !root.busy: Button { text: @tr("Play"); primary: true; enabled: !root.launching; clicked => { root.play(); } }
-                            if root.downloaded && !root.busy: Button { text: @tr("Delete download"); enabled: !root.launching; clicked => { root.delete(); } }
+                            if root.downloaded && !root.busy && !root.local: Button { text: @tr("Delete download"); enabled: !root.launching; clicked => { root.delete(); } }
+                            if root.local: Button { text: @tr("Remove from ROM Play"); enabled: !root.launching; clicked => { root.remove-local(); } }
                             if root.show-collections: Button {
                                 text: root.favorite ? @tr("♥ In favorites") : @tr("♡ Add to favorites");
                                 enabled: root.can-edit-collections;
@@ -2778,6 +2788,97 @@ component RemapDialog inherits Rectangle {
     }
 }
 
+/// Adds a Mac app or a ROM file from this computer to the library, under a console, matched to
+/// the same game in RomM for its cover and details.
+component AddGameDialog inherits Rectangle {
+    in property <string> file;
+    in property <bool> is-app;
+    in-out property <string> name;
+    in property <[string]> consoles;
+    in-out property <int> console;
+    in property <[string]> matches;
+    in-out property <int> match;
+    in property <string> error;
+    callback console-chosen(int);
+    callback confirmed();
+    callback cancelled();
+    background: Theme.scrim;
+    TouchArea { }
+    FocusScope {
+        init => { self.focus(); }
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                root.cancelled();
+                return accept;
+            }
+            return reject;
+        }
+        Rectangle {
+            width: 460px;
+            height: box.preferred-height;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: Theme.surface-raised;
+            border-radius: 10px;
+            border-width: 1px;
+            border-color: Theme.surface-selected;
+            box := VerticalLayout {
+                padding: 20px;
+                spacing: 10px;
+                Text { horizontal-alignment: Locale.start; text: @tr("Add a game from this Mac"); font-size: Theme.font-subtitle; font-weight: 700; }
+                Text {
+                    horizontal-alignment: Locale.start;
+                    text: (root.is-app ? @tr("Mac app") : @tr("ROM file")) + " · " + root.file;
+                    color: Theme.text-secondary;
+                    overflow: elide;
+                }
+                Text { horizontal-alignment: Locale.start; text: @tr("Name"); font-size: Theme.font-small; font-weight: 600; }
+                LineEdit { text <=> root.name; }
+                Text { horizontal-alignment: Locale.start; text: @tr("Console"); font-size: Theme.font-small; font-weight: 600; }
+                ComboBox {
+                    model: root.consoles;
+                    current-index <=> root.console;
+                    selected => { root.console-chosen(self.current-index); }
+                }
+                Text {
+                    horizontal-alignment: Locale.start;
+                    text: root.is-app
+                        ? @tr("The console the game first came out on, such as Nintendo Switch 2 for a recomp, or Mac for a Mac game.")
+                        : @tr("The console this ROM is for. ROM Play plays it with that console's emulator.");
+                    font-size: Theme.font-small;
+                    color: Theme.text-muted;
+                    wrap: word-wrap;
+                }
+                Text { horizontal-alignment: Locale.start; text: @tr("Same game in your RomM library"); font-size: Theme.font-small; font-weight: 600; }
+                ComboBox {
+                    model: root.matches;
+                    current-index <=> root.match;
+                    enabled: root.matches.length > 1;
+                }
+                Text {
+                    horizontal-alignment: Locale.start;
+                    text: @tr("It lends this game its cover, details and screenshots. Without one, a Mac app keeps its own icon.");
+                    font-size: Theme.font-small;
+                    color: Theme.text-muted;
+                    wrap: word-wrap;
+                }
+                if root.error != "": Text { horizontal-alignment: Locale.start; text: root.error; color: Theme.accent; wrap: word-wrap; }
+                Row {
+                    alignment: end;
+                    spacing: 10px;
+                    Button { text: @tr("Cancel"); clicked => { root.cancelled(); } }
+                    Button {
+                        text: @tr("Add");
+                        primary: true;
+                        enabled: root.name != "" && root.console >= 0;
+                        clicked => { root.confirmed(); }
+                    }
+                }
+            }
+        }
+    }
+}
+
 component Dialog inherits Rectangle {
     in property <string> title;
     in property <string> message;
@@ -3285,6 +3386,8 @@ export component AppWindow inherits Window {
     in property <bool> game-downloaded;
     in property <bool> game-busy;
     in property <bool> game-launching;
+    in property <bool> game-local;
+    callback game-remove-local();
     in property <bool> game-playable;
     in property <bool> game-can-download;
     in property <float> game-progress;
@@ -3357,6 +3460,20 @@ export component AppWindow inherits Window {
     in property <float> grid-focus-bottom;
     in property <[PadHint]> pad-hints;
     in property <bool> dialog-open;
+    // Adding a game from this computer.
+    callback add-local-game();
+    in property <bool> add-game-open;
+    in property <string> add-game-file;
+    in property <bool> add-game-is-app;
+    in-out property <string> add-game-name;
+    in property <[string]> add-game-consoles;
+    in-out property <int> add-game-console;
+    in property <[string]> add-game-matches;
+    in-out property <int> add-game-match;
+    in property <string> add-game-error;
+    callback add-game-console-chosen(int);
+    callback add-game-confirmed();
+    callback add-game-cancelled();
     in property <string> dialog-title;
     in property <string> dialog-message;
     in property <bool> dialog-asks-name;
@@ -3517,6 +3634,7 @@ export component AppWindow inherits Window {
         heading-detail: root.heading-detail;
         app-icon: root.app-icon;
         has-app-icon: root.has-app-icon;
+        add-local-game => { root.add-local-game(); }
         open-about => {
             root.about-log-note = "";
             root.about-open = true;
@@ -3549,6 +3667,8 @@ export component AppWindow inherits Window {
             downloaded: root.game-downloaded;
             busy: root.game-busy;
             launching: root.game-launching;
+            local: root.game-local;
+            remove-local => { root.game-remove-local(); }
             playable: root.game-playable;
             can-download: root.game-can-download;
             progress: root.game-progress;
@@ -3709,6 +3829,19 @@ export component AppWindow inherits Window {
         show-after-updates-toggled(on) => { root.whats-new-after-updates-toggled(on); }
         open-changelog => { root.open-url("https://github.com/afsrq/ROM-Play/blob/main/CHANGELOG.md"); }
         close => { root.whats-new-open = false; }
+    }
+    if root.add-game-open: AddGameDialog {
+        file: root.add-game-file;
+        is-app: root.add-game-is-app;
+        name <=> root.add-game-name;
+        consoles: root.add-game-consoles;
+        console <=> root.add-game-console;
+        matches: root.add-game-matches;
+        match <=> root.add-game-match;
+        error: root.add-game-error;
+        console-chosen(index) => { root.add-game-console-chosen(index); }
+        confirmed => { root.add-game-confirmed(); }
+        cancelled => { root.add-game-cancelled(); }
     }
     if root.dialog-open: Dialog {
         title: root.dialog-title;

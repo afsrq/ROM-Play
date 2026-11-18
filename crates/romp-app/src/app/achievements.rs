@@ -223,7 +223,9 @@ impl Controller {
             .unwrap_or_default();
         self.show_game_achievements(id, &list, false);
         let client = self.client.borrow().clone();
-        let Some(client) = client.filter(|_| !self.offline.get()) else {
+        let Some(client) =
+            client.filter(|_| !self.offline.get() && !crate::local_games::is_local(id))
+        else {
             return;
         };
         let account = self.ra_account();

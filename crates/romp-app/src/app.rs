@@ -3,6 +3,7 @@ mod activity;
 mod collections;
 mod game;
 mod installs;
+mod local_games;
 mod navigation;
 mod notifications;
 mod play_status;
@@ -160,6 +161,8 @@ struct Controller {
     update_dismissed: Cell<bool>,
     /// A newer ROM Play is downloading in the background, to install when it restarts.
     update_staging: Cell<bool>,
+    /// The Add a game dialog, while it's open.
+    add_game: RefCell<Option<local_games::AddGame>>,
 }
 
 thread_local! {
@@ -285,6 +288,7 @@ pub fn run() -> anyhow::Result<()> {
         pending_top: Cell::new(None),
         update_dismissed: Cell::new(false),
         update_staging: Cell::new(false),
+        add_game: RefCell::new(None),
     });
     ui.set_rows(ModelRc::from(controller.library.borrow().rows.clone()));
     CONTROLLER.with(|c| *c.borrow_mut() = Some(controller.clone()));
@@ -445,6 +449,11 @@ impl Controller {
         ui.on_cancel_download(|| with_controller(|c| c.cancel_download()));
         ui.on_play_game(|| with_controller(|c| c.play_game()));
         ui.on_delete_game(|| with_controller(|c| c.delete_game()));
+        ui.on_add_local_game(|| with_controller(|c| c.add_local_game()));
+        ui.on_add_game_console_chosen(|i| with_controller(|c| c.add_game_console_chosen(i)));
+        ui.on_add_game_confirmed(|| with_controller(|c| c.add_game_confirmed()));
+        ui.on_add_game_cancelled(|| with_controller(|c| c.add_game_cancelled()));
+        ui.on_game_remove_local(|| with_controller(|c| c.remove_local_game()));
         ui.on_keep_local_save(|| with_controller(|c| c.keep_save(crate::saves::Keep::Local)));
         ui.on_keep_server_save(|| with_controller(|c| c.keep_save(crate::saves::Keep::Server)));
         ui.on_pair_again(|| with_controller(|c| c.pair_again()));
@@ -914,9 +923,11 @@ impl Controller {
         self.reload_sidebar();
         self.reload_games();
         let client = self.client.borrow().clone();
-        if let Some(client) =
-            client.filter(|_| !self.offline.get() && self.has_scope("roms.user.write"))
-        {
+        if let Some(client) = client.filter(|_| {
+            !crate::local_games::is_local(id)
+                && !self.offline.get()
+                && self.has_scope("roms.user.write")
+        }) {
             self.shared.rt.spawn(async move {
                 if let Err(e) = client.mark_played(id).await {
                     tracing::warn!("marking {id} as played on the server: {e}");

@@ -19,6 +19,7 @@ Emulators run in a sandbox. On macOS it also stops them reaching the internet. O
 
 ## What ROM Play keeps on your computer
 
+- **Games you add from this Mac** with the + button, and their play time and saves, stay on this computer. ROM Play doesn't tell RomM about them.
 - **Sign-in tokens** for your RomM server and RetroAchievements, in your system's keychain or credential store. ROM Play never stores your passwords.
 - **A log of what ROM Play did**, for the last five launches, in the `logs` folder inside the folder below. It can include your server's address, game names and folder paths, never your sign-in tokens or passwords, and ROM Play never sends it anywhere. About ROM Play → Show log opens it, so you can attach it to a bug report if you choose to.
 - **Your library list, downloaded games, saves, save states, screenshots and settings**, in `~/Library/Application Support/Romp` on macOS, `%LOCALAPPDATA%\Romp` on Windows and `~/.local/share/Romp` on Linux.

@@ -105,6 +105,10 @@ impl Controller {
     }
 
     pub(super) fn game_saves(&self, detail: &GameDetail) -> Option<GameSaves> {
+        // A game added from this computer keeps its saves here: RomM has no record of it.
+        if crate::local_games::is_local(detail.id) {
+            return None;
+        }
         let core = core_for_platform(&detail.platform_slug)?;
         let variant = self
             .shared

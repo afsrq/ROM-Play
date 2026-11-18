@@ -66,7 +66,9 @@ impl Controller {
     pub(super) fn refresh_status_controls(&self, rom_id: i64) {
         let Some(ui) = self.ui() else { return };
         let status = self.shared.store.lock().unwrap().play_status(rom_id);
-        ui.set_show_status(self.has_scope("roms.user.read"));
+        ui.set_show_status(
+            self.has_scope("roms.user.read") && !crate::local_games::is_local(rom_id),
+        );
         ui.set_can_edit_status(self.can_edit_status());
         ui.set_game_status_label(label(status).into());
         let options: Vec<StatusOption> = options(status)

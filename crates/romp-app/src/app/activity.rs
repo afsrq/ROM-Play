@@ -81,7 +81,16 @@ impl Controller {
         let Some(client) = self.activity_client() else {
             return;
         };
-        let sessions = self.shared.store.lock().unwrap().play_sessions();
+        // Play time of games added from this computer stays here: RomM has no record of them.
+        let sessions: Vec<_> = self
+            .shared
+            .store
+            .lock()
+            .unwrap()
+            .play_sessions()
+            .into_iter()
+            .filter(|s| !crate::local_games::is_local(s.rom_id))
+            .collect();
         if sessions.is_empty() {
             return;
         }
@@ -144,12 +153,11 @@ impl Controller {
             .and_then(|json| serde_json::from_str(&json).ok())
             .unwrap_or_default();
         self.show_play_stats(rom_id, cached);
-        let Some(client) = self
-            .client
-            .borrow()
-            .clone()
-            .filter(|_| !self.offline.get() && self.has_scope("roms.user.read"))
-        else {
+        let Some(client) = self.client.borrow().clone().filter(|_| {
+            !self.offline.get()
+                && self.has_scope("roms.user.read")
+                && !crate::local_games::is_local(rom_id)
+        }) else {
             return;
         };
         self.shared.rt.spawn(async move {

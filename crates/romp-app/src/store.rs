@@ -381,6 +381,25 @@ impl Store {
                  COMMIT;",
             )?;
         }
+        if version < 19 {
+            // Games added from this computer, outside RomM: the console they belong to, by slug so
+            // they find it again when RomM's platforms change, and the RomM game they borrow details from.
+            let has_columns: bool = conn.query_row(
+                "SELECT COUNT(*) > 0 FROM pragma_table_info('games') WHERE name = 'local_platform'",
+                [],
+                |r| r.get(0),
+            )?;
+            if !has_columns {
+                conn.execute_batch(
+                    "BEGIN;
+                     ALTER TABLE games ADD COLUMN local_platform TEXT;
+                     ALTER TABLE games ADD COLUMN local_platform_name TEXT;
+                     ALTER TABLE games ADD COLUMN match_id INTEGER;
+                     COMMIT;",
+                )?;
+            }
+            conn.execute_batch("PRAGMA user_version = 19;")?;
+        }
         Ok(Self { conn })
     }
 
@@ -452,7 +471,8 @@ impl Store {
             serde_json::to_string(&aliases).expect("aliases serialize")
         }
         let tx = self.conn.transaction().expect("tx");
-        tx.execute("DELETE FROM platforms", [])
+        // Consoles made up for games added from this computer have negative ids, and stay.
+        tx.execute("DELETE FROM platforms WHERE id >= 0", [])
             .expect("clear platforms");
         for p in platforms {
             tx.execute(
@@ -461,6 +481,7 @@ impl Store {
             )
             .expect("insert platform");
         }
+        relink_local_games(&tx);
         tx.commit().expect("commit");
     }
 
@@ -806,6 +827,9 @@ impl Store {
     }
 
     pub fn add_pending_screenshot(&self, rom_id: i64, path: &str) {
+        if crate::local_games::is_local(rom_id) {
+            return;
+        }
         self.conn
             .execute(
                 "INSERT OR IGNORE INTO pending_screenshots (path, rom_id) VALUES (?1, ?2)",
@@ -1203,14 +1227,185 @@ impl Store {
     pub fn clear_library(&mut self) {
         self.conn
             .execute_batch(
-                "DELETE FROM games; DELETE FROM platforms; DELETE FROM state_sync; DELETE FROM pending_saves;
+                "DELETE FROM games WHERE id >= 0; DELETE FROM platforms WHERE id >= 0; DELETE FROM state_sync; DELETE FROM pending_saves;
                  DELETE FROM play_sessions; DELETE FROM recommendations;
                  DELETE FROM pending_screenshots;
                  DELETE FROM collections; DELETE FROM collection_roms; DELETE FROM siblings;
                  DELETE FROM kv WHERE key = 'last_sync_at';",
             )
             .expect("clear library");
+        relink_local_games(&self.conn);
     }
+
+    /// Adds a game from this computer, outside RomM, under the console with `platform_slug`,
+    /// borrowing the cover and details of RomM's game `match_id` when there is one. Returns its id,
+    /// which is negative so it never meets one of RomM's.
+    pub fn add_local_game(&mut self, game: &NewLocalGame) -> i64 {
+        let tx = self.conn.transaction().expect("tx");
+        let id: i64 = tx
+            .query_row(
+                "SELECT MIN(COALESCE(MIN(id), 0), 0) - 1 FROM games",
+                [],
+                |r| r.get(0),
+            )
+            .expect("next local id");
+        tx.execute(
+            "INSERT INTO games
+             (id, platform_id, title, updated_at, cover_small, cover_large, size_bytes, added_at,
+              card, picked, local_path, local_platform, local_platform_name, match_id)
+             VALUES (?1, 0, ?2, '', ?3, ?3, ?4, ?5, 'local-' || ?1, 1, ?6, ?7, ?8, ?9)",
+            params![
+                id,
+                game.title,
+                game.cover,
+                game.size_bytes,
+                game.added_at,
+                game.path,
+                game.platform_slug,
+                game.platform_name,
+                game.match_id
+            ],
+        )
+        .expect("add local game");
+        if let Some(found) = game.match_id {
+            tx.execute(
+                "UPDATE games SET
+                   summary = m.summary, meta = m.meta, screenshots = m.screenshots,
+                   cover_small = COALESCE(m.cover_small, games.cover_small),
+                   cover_large = COALESCE(m.cover_large, games.cover_large)
+                 FROM (SELECT summary, meta, screenshots, cover_small, cover_large
+                       FROM games WHERE id = ?2) AS m
+                 WHERE games.id = ?1",
+                params![id, found],
+            )
+            .expect("borrow details");
+        }
+        relink_local_games(&tx);
+        tx.commit().expect("commit");
+        id
+    }
+
+    /// Games added from this computer whose cover is their own icon, with where they are.
+    pub fn local_games_with_icons(&self, icon: &str) -> Vec<(i64, String)> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, local_path FROM games WHERE id < 0 AND cover_small = ?1 AND local_path IS NOT NULL")
+            .expect("prepare");
+        stmt.query_map([icon], |r| Ok((r.get(0)?, r.get(1)?)))
+            .expect("query")
+            .filter_map(Result::ok)
+            .collect()
+    }
+
+    /// Takes a game added from this computer out of the library. Its files stay where they are.
+    pub fn remove_local_game(&mut self, id: i64) {
+        if id >= 0 {
+            return;
+        }
+        let tx = self.conn.transaction().expect("tx");
+        tx.execute("DELETE FROM games WHERE id = ?1", [id])
+            .expect("remove local game");
+        tx.execute(
+            "DELETE FROM platforms WHERE id < 0 AND id NOT IN (SELECT platform_id FROM games)",
+            [],
+        )
+        .expect("remove unused consoles");
+        tx.commit().expect("commit");
+    }
+
+    /// The consoles a game from this computer can go under: RomM's, and the extra ones RomM
+    /// might not have, such as the Switch 2, by name.
+    pub fn local_consoles(&self) -> Vec<(String, String)> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT slug, name FROM platforms WHERE id >= 0")
+            .expect("prepare");
+        let mut consoles: Vec<(String, String)> = stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .expect("query")
+            .filter_map(Result::ok)
+            .collect();
+        for (slug, name) in EXTRA_CONSOLES {
+            if !consoles.iter().any(|(s, _)| s == slug) {
+                consoles.push((slug.to_string(), name.to_string()));
+            }
+        }
+        consoles.sort_by_key(|(_, name)| name.to_lowercase());
+        consoles
+    }
+
+    /// RomM's games on the console with `slug`, which a game from this computer can borrow
+    /// its cover and details from.
+    pub fn match_candidates(&self, slug: &str) -> Vec<(i64, String)> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT g.id, g.title FROM games g JOIN platforms p ON p.id = g.platform_id
+                 WHERE p.slug = ?1 AND g.id >= 0",
+            )
+            .expect("prepare");
+        stmt.query_map([slug], |r| Ok((r.get(0)?, r.get(1)?)))
+            .expect("query")
+            .filter_map(Result::ok)
+            .collect()
+    }
+}
+
+/// A game to add from this computer.
+pub struct NewLocalGame<'a> {
+    pub title: &'a str,
+    pub platform_slug: &'a str,
+    pub platform_name: &'a str,
+    pub path: &'a str,
+    pub size_bytes: i64,
+    pub added_at: Option<&'a str>,
+    /// What the cover cache knows this game's own cover by, when it has one.
+    pub cover: Option<&'a str>,
+    pub match_id: Option<i64>,
+}
+
+/// Consoles a game from this computer can go under even when RomM has none of their games.
+pub const EXTRA_CONSOLES: [(&str, &str); 3] = [
+    ("switch", "Nintendo Switch"),
+    ("switch-2", "Nintendo Switch 2"),
+    ("mac", "Mac"),
+];
+
+/// Puts each game from this computer under its console: RomM's when it has one by that slug,
+/// else one made up for it with a negative id. Run whenever RomM's consoles change.
+fn relink_local_games(conn: &Connection) {
+    let wanted: Vec<(String, String)> = conn
+        .prepare(
+            "SELECT DISTINCT local_platform, COALESCE(local_platform_name, local_platform)
+             FROM games WHERE id < 0 AND local_platform IS NOT NULL
+               AND local_platform NOT IN (SELECT slug FROM platforms)",
+        )
+        .expect("prepare")
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .expect("query")
+        .filter_map(Result::ok)
+        .collect();
+    for (slug, name) in wanted {
+        let category = if slug == "mac" { "Computer" } else { "Console" };
+        conn.execute(
+            "INSERT INTO platforms (id, slug, name, category, aliases)
+             VALUES ((SELECT MIN(COALESCE(MIN(id), 0), 0) - 1 FROM platforms), ?1, ?2, ?3, '[]')",
+            params![slug, name, category],
+        )
+        .expect("add console");
+    }
+    conn.execute(
+        "UPDATE games SET platform_id = (SELECT p.id FROM platforms p WHERE p.slug = games.local_platform
+                                         ORDER BY p.id < 0 LIMIT 1)
+         WHERE id < 0 AND local_platform IS NOT NULL",
+        [],
+    )
+    .expect("relink local games");
+    conn.execute(
+        "DELETE FROM platforms WHERE id < 0 AND id NOT IN (SELECT platform_id FROM games)",
+        [],
+    )
+    .expect("remove unused consoles");
 }
 
 #[cfg(test)]
@@ -1272,6 +1467,129 @@ mod tests {
         s.set_file_choices(7, &files[..1]);
         assert!(s.file_choices(7).is_empty());
         assert!(s.knows_file_choices(7));
+    }
+
+    fn local<'a>(
+        title: &'a str,
+        slug: &'a str,
+        name: &'a str,
+        found: Option<i64>,
+    ) -> NewLocalGame<'a> {
+        NewLocalGame {
+            title,
+            platform_slug: slug,
+            platform_name: name,
+            path: "/Applications/Game.app",
+            size_bytes: 5,
+            added_at: None,
+            cover: Some("local:icon"),
+            match_id: found,
+        }
+    }
+
+    #[test]
+    fn local_games_go_under_romms_console_or_one_made_for_them() {
+        let mut s = seeded();
+        let snes = s.add_local_game(&local("Zelda Recomp", "snes", "SNES", Some(10)));
+        let switch2 = s.add_local_game(&local("Port", "switch-2", "Nintendo Switch 2", None));
+        assert!(
+            snes < 0 && switch2 < snes,
+            "ids are negative and new each time"
+        );
+        let game = s.game(snes).unwrap();
+        assert_eq!(game.platform_id, 1, "RomM's SNES");
+        assert_eq!(game.local_path.as_deref(), Some("/Applications/Game.app"));
+        let port = s.game(switch2).unwrap();
+        assert!(port.platform_id < 0);
+        assert_eq!(port.platform, "Nintendo Switch 2");
+        assert_eq!(port.cover_small.as_deref(), Some("local:icon"));
+        let names: Vec<String> = s.platforms(false).into_iter().map(|p| p.name).collect();
+        assert_eq!(names, ["Game Boy", "Nintendo Switch 2", "SNES"]);
+        assert!(ids(&s, GameFilter::default()).contains(&switch2));
+    }
+
+    #[test]
+    fn a_match_lends_its_cover_and_details_but_not_its_card() {
+        let mut s = seeded();
+        s.conn
+            .execute(
+                "UPDATE games SET summary = 'Hero', cover_small = 'c.png', cover_large = 'C.png' WHERE id = 10",
+                [],
+            )
+            .unwrap();
+        let id = s.add_local_game(&local("Zelda Recomp", "snes", "SNES", Some(10)));
+        let game = s.game(id).unwrap();
+        assert_eq!(game.summary.as_deref(), Some("Hero"));
+        assert_eq!(game.cover_large.as_deref(), Some("C.png"));
+        assert_eq!(game.title, "Zelda Recomp");
+        assert_eq!(
+            ids(&s, GameFilter::default())
+                .iter()
+                .filter(|g| [10, id].contains(g))
+                .count(),
+            2,
+            "both show, each on its own card"
+        );
+    }
+
+    #[test]
+    fn local_games_outlast_syncs_and_sign_outs_and_follow_their_console() {
+        let mut s = seeded();
+        let id = s.add_local_game(&local("Port", "switch-2", "Nintendo Switch 2", None));
+        s.replace_platforms(&[platform(1, "SNES")]);
+        s.retain_games(&[10]);
+        assert!(s.game(id).is_some(), "a sync keeps it");
+        assert!(s.game(id).unwrap().platform_id < 0);
+        let mut romm_switch2 = platform(9, "Nintendo Switch 2");
+        romm_switch2.slug = "switch-2".into();
+        s.replace_platforms(&[platform(1, "SNES"), romm_switch2]);
+        assert_eq!(
+            s.game(id).unwrap().platform_id,
+            9,
+            "moves under RomM's once it has one"
+        );
+        assert_eq!(
+            s.conn
+                .query_row("SELECT COUNT(*) FROM platforms WHERE id < 0", [], |r| r
+                    .get::<_, i64>(0))
+                .unwrap(),
+            0,
+            "the made-up console goes"
+        );
+        s.clear_library();
+        let game = s.game(id).unwrap();
+        assert!(game.platform_id < 0, "back under a made-up one");
+        assert_eq!(game.platform, "Nintendo Switch 2");
+        s.remove_local_game(id);
+        assert!(s.game(id).is_none());
+        assert!(s.platforms(false).is_empty());
+    }
+
+    #[test]
+    fn consoles_to_add_to_include_romms_and_the_switch_2() {
+        let s = seeded();
+        let consoles = s.local_consoles();
+        let names: Vec<&str> = consoles.iter().map(|(_, n)| n.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "Empty",
+                "Game Boy",
+                "Mac",
+                "Nintendo Switch",
+                "Nintendo Switch 2",
+                "SNES"
+            ]
+        );
+        let mut found = s.match_candidates("snes");
+        found.sort();
+        assert_eq!(
+            found,
+            [
+                (10, "zelda".to_string()),
+                (11, "Chrono Trigger".to_string())
+            ]
+        );
     }
 
     #[test]

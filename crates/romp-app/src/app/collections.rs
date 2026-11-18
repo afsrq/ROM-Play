@@ -465,7 +465,7 @@ impl Controller {
 
     pub(super) fn refresh_collection_controls(&self, rom_id: i64) {
         let Some(ui) = self.ui() else { return };
-        let show = self.has_scope("collections.read");
+        let show = self.has_scope("collections.read") && !crate::local_games::is_local(rom_id);
         ui.set_show_collections(show);
         ui.set_can_edit_collections(self.can_edit_collections());
         let (collections, member_of, favorite) = {

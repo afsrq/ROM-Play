@@ -4,6 +4,12 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-18
+
+### Added
+
+- Games from this Mac: the + button in the sidebar adds a Mac app, such as a recompiled port of a console game, or a ROM file on this Mac, to the library without RomM. You choose the console it belongs under, including the Nintendo Switch and Switch 2, which RomM doesn't need to have, and the same game in your RomM library to borrow its cover, details and screenshots from; ROM Play suggests the likeliest. A Mac app without a match shows its own icon. Mac apps open as themselves and ROM files play with ROM Play's emulators, and play time is counted for both. Remove from ROM Play takes one out of the library and leaves its files alone. ROM Play doesn't tell RomM about these games.
+
 ## [0.24.0] - 2026-11-18
 
 ### Added
@@ -384,7 +390,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/afsrq/ROM-Play/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/afsrq/ROM-Play/compare/v0.23.1...v0.24.0
 [0.23.1]: https://github.com/afsrq/ROM-Play/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/afsrq/ROM-Play/releases/tag/v0.23.0

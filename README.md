@@ -17,6 +17,7 @@ ROM Play is based on [RomP](https://github.com/RompEmu/RomP) by Beshr Kayali Rei
 - **PlayStation 4:** PS4 games play with [shadPS4](https://github.com/shadps4-emu/shadPS4). ROM Play installs it, keeps it separate from any shadPS4 you installed yourself, and starts games from their installed game folder (the one with `eboot.bin`), or a zip or 7z of one.
 - **PS4 settings:** Settings → Consoles → **shadPS4 settings** opens the [shadPS4 QtLauncher](https://github.com/shadps4-emu/shadps4-qtlauncher) on ROM Play's copy of shadPS4, for graphics, controls, patches and more.
 - **Emulators that stay up to date:** before a game starts, ROM Play checks for a newer release of its standalone emulators (shadPS4, RPCS3 and xemu) and installs it. Offline, or if an update fails, it plays with the version it has.
+- **Games from this Mac:** the **+** button in the sidebar adds a Mac app, such as a recompiled port, or a ROM file from this Mac, outside RomM. Each goes under the console it came from, including the Nintendo Switch and Switch 2, and can borrow its cover and details from the same game in your RomM library. Mac apps open as themselves, ROM files play with ROM Play's emulators, and play time is kept for both. Removing one only takes it out of ROM Play.
 - **Its own app:** ROM Play keeps its settings, sign-ins and downloads apart from RomP's, so both can be installed on the same Mac.
 
 ## Features

@@ -140,6 +140,20 @@ impl Covers {
         Ok(path)
     }
 
+    /// Keeps a cover that didn't come from RomM, such as a Mac app's icon, as `cover` for the game,
+    /// both as the library's thumbnail and as its page's large cover.
+    pub fn store_own(&self, game_id: i64, cover: &str, png: &[u8]) -> Result<(), String> {
+        std::fs::create_dir_all(&self.dir).map_err(|e| e.to_string())?;
+        let thumb = make_thumbnail(png)?;
+        std::fs::write(self.path_for(game_id, cover), thumb).map_err(|e| e.to_string())?;
+        std::fs::write(
+            self.original_base("large", game_id, cover)
+                .with_extension("png"),
+            png,
+        )
+        .map_err(|e| e.to_string())
+    }
+
     pub fn cached_large(&self, game_id: i64, cover: &str) -> Option<PathBuf> {
         self.cached_original("large", game_id, cover)
     }
