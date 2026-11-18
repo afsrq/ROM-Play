@@ -52,9 +52,11 @@ component PadBadge inherits Rectangle {
 }
 
 export global Brand {
-    out property <string> name: "RomP";
-    out property <string> website: "https://github.com/RompEmu/RomP";
-    out property <string> website-label: "github.com/RompEmu/RomP";
+    out property <string> name: "ROM Play";
+    out property <string> website: "https://github.com/afsrq/RomP-Enhanced";
+    out property <string> website-label: "github.com/afsrq/RomP-Enhanced";
+    // ROM Play is a fork of RomP, which it credits in About.
+    out property <string> upstream-website: "https://github.com/RompEmu/RomP";
     out property <string> author: "Beshr Kayali Reinholdsson";
     out property <string> author-website: "https://beshr.com";
     out property <string> translate-website: "https://crowdin.com/project/romp";
@@ -263,7 +265,7 @@ component Welcome inherits SetupFrame {
         Feature {
             icon: @image-url("icons/play.svg");
             title: @tr("Emulators taken care of");
-            text: @tr("RomP sets up the right emulator for each game and runs it in a sandbox.");
+            text: @tr("ROM Play sets up the right emulator for each game and runs it in a sandbox.");
         }
     }
     Row {
@@ -299,7 +301,7 @@ component Connect inherits SetupFrame {
             accepted => { root.connect(); }
         }
         if root.error == "": Text { horizontal-alignment: Locale.start;
-            text: @tr("RomP works with RomM 5.0 or newer.");
+            text: @tr("ROM Play works with RomM 5.0 or newer.");
             font-size: Theme.font-small;
             color: Theme.text-subtle;
         }
@@ -310,7 +312,7 @@ component Connect inherits SetupFrame {
             VerticalLayout {
                 padding: 12px;
                 Text { horizontal-alignment: Locale.start;
-                    text: @tr("This computer has no keychain, so your sign-in will be kept in a file in RomP's data folder that only your user account can read.");
+                    text: @tr("This computer has no keychain, so your sign-in will be kept in a file in ROM Play's data folder that only your user account can read.");
                     font-size: Theme.font-small;
                     color: Theme.text-secondary;
                     wrap: word-wrap;
@@ -531,7 +533,7 @@ component SidebarItem inherits Rectangle {
     in property <bool> selected;
     in property <image> icon;
     in property <bool> has-icon;
-    // RomP's own icons are white and take the text colour; consoles' icons keep theirs.
+    // ROM Play's own icons are white and take the text colour; consoles' icons keep theirs.
     in property <bool> tint;
     in property <string> glyph;
     callback clicked();
@@ -1289,8 +1291,8 @@ component Library inherits Rectangle {
                                 vertical-alignment: center;
                                 horizontal-stretch: 1;
                                 text: root.update-homebrew
-                                    ? @tr("RomP {} is available. Run “brew upgrade romp” to update.", root.update-version)
-                                    : @tr("RomP {} is available.", root.update-version);
+                                    ? @tr("ROM Play {} is available. Run “brew upgrade romp” to update.", root.update-version)
+                                    : @tr("ROM Play {} is available.", root.update-version);
                                 font-size: Theme.font-small;
                                 font-weight: 600;
                                 color: Theme.accent-text;
@@ -1299,7 +1301,7 @@ component Library inherits Rectangle {
                             if !root.update-homebrew: Button { text: @tr("Download"); primary: true; clicked => { root.update-download(); } }
                             Button { text: @tr("What's new"); clicked => { root.update-notes(); } }
                             Button { text: @tr("Skip this version"); clicked => { root.update-skip(); } }
-                            IconButton { icon: @image-url("icons/close.svg"); tooltip: @tr("Hide until RomP restarts"); clicked => { root.update-dismiss(); } }
+                            IconButton { icon: @image-url("icons/close.svg"); tooltip: @tr("Hide until ROM Play restarts"); clicked => { root.update-dismiss(); } }
                         }
                     }
                     grid := Rectangle {
@@ -2279,14 +2281,14 @@ component SettingsPage inherits FocusScope {
                         Panel {
                             SettingRow {
                                 label: @tr("Check for updates");
-                                detail: @tr("Once a day, RomP asks GitHub for its newest version, and tells you when there is one.");
+                                detail: @tr("Once a day, ROM Play asks GitHub for its newest version, and tells you when there is one.");
                                 Switch { checked <=> root.check-updates; toggled => { root.prefs-changed(); } }
                             }
                         }
                         Row {
                             alignment: start;
                             LinkButton {
-                                text: @tr("Help translate RomP on Crowdin");
+                                text: @tr("Help translate ROM Play on Crowdin");
                                 clicked => { root.open-link(Brand.translate-website); }
                             }
                         }
@@ -2324,7 +2326,7 @@ component SettingsPage inherits FocusScope {
                         Panel {
                             if root.ra-signed-in: SettingRow {
                                 label: @tr("Signed in as {}", root.ra-user);
-                                detail: @tr("Games with achievements show them as you play. RomP keeps a sign-in token, not your password.");
+                                detail: @tr("Games with achievements show them as you play. ROM Play keeps a sign-in token, not your password.");
                                 Button { text: @tr("Sign out"); clicked => { root.ra-sign-out(); } }
                             }
                             if root.ra-signed-in && root.ra-hardcore-allowed: SettingRow {
@@ -2357,7 +2359,7 @@ component SettingsPage inherits FocusScope {
                             }
                             if !root.ra-signed-in: SettingRow {
                                 label: @tr("Sign in");
-                                detail: root.ra-status != "" ? root.ra-status : @tr("Earn achievements while you play. RomP keeps a sign-in token, not your password.");
+                                detail: root.ra-status != "" ? root.ra-status : @tr("Earn achievements while you play. ROM Play keeps a sign-in token, not your password.");
                                 detail-color: root.ra-status != "" && !root.ra-busy ? Theme.danger : Theme.text-muted;
                                 LineEdit {
                                     width: 150px;
@@ -2857,7 +2859,7 @@ component WhatsNewDialog inherits Rectangle {
             spacing: 16px;
             Text {
                 horizontal-alignment: Locale.start;
-                text: @tr("What’s new in RomP {}", root.version);
+                text: @tr("What’s new in ROM Play {}", root.version);
                 font-size: Theme.font-title;
                 font-weight: 800;
                 color: Theme.text-strong;
@@ -2997,7 +2999,7 @@ component AboutDialog inherits Rectangle {
                 Rectangle { height: 5px; }
                 Row {
                     alignment: center;
-                    Text { horizontal-alignment: Locale.start; text: @tr("By"); font-size: Theme.font-small; color: Theme.text-secondary; vertical-alignment: center; }
+                    Text { horizontal-alignment: Locale.start; text: @tr("Based on RomP by"); font-size: Theme.font-small; color: Theme.text-secondary; vertical-alignment: center; }
                     LinkButton { text: Brand.author; clicked => { root.open-link(Brand.author-website); } }
                 }
                 Rectangle { height: 16px; }
@@ -3018,7 +3020,7 @@ component AboutDialog inherits Rectangle {
                 VerticalLayout {
                     spacing: 6px;
                     AboutFact { text: @tr("Games and saves come from your RomM server."); }
-                    AboutFact { text: @tr("Emulation by libretro cores, xemu and RPCS3."); }
+                    AboutFact { text: @tr("Emulation by libretro cores, xemu, RPCS3 and shadPS4."); }
                     AboutFact { text: @tr("Free software under the GNU GPL, version 3 or later."); }
                 }
                 Rectangle { height: 14px; }
@@ -3043,7 +3045,7 @@ component AboutDialog inherits Rectangle {
                 Text { horizontal-alignment: Locale.start;
                     x: 24px;
                     width: parent.width - 48px;
-                    text: @tr("RomP and the emulators it downloads are each covered by their own license.");
+                    text: @tr("ROM Play and the emulators it downloads are each covered by their own license.");
                     font-size: Theme.font-small;
                     color: Theme.text-muted;
                     wrap: word-wrap;
@@ -3673,7 +3675,7 @@ export component AppWindow inherits Window {
         notes: root.whats-new-notes;
         show-after-updates <=> root.whats-new-after-updates;
         show-after-updates-toggled(on) => { root.whats-new-after-updates-toggled(on); }
-        open-changelog => { root.open-url("https://github.com/RompEmu/RomP/blob/main/CHANGELOG.md"); }
+        open-changelog => { root.open-url("https://github.com/afsrq/RomP-Enhanced/blob/main/CHANGELOG.md"); }
         close => { root.whats-new-open = false; }
     }
     if root.dialog-open: Dialog {

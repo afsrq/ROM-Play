@@ -61,7 +61,7 @@ pub fn check_version(version: &str) -> Result<(), String> {
     {
         Some(major) if major >= 5 => Ok(()),
         Some(_) => Err(tr::tr!(
-            "This server runs RomM {version}. RomP needs RomM 5.0 or newer.",
+            "This server runs RomM {version}. ROM Play needs RomM 5.0 or newer.",
             version
         )),
         None => Err(tr::tr!("Unrecognised RomM version \"{version}\".", version)),
@@ -209,7 +209,7 @@ impl Client {
         let body = serde_json::json!({
             "client_device_identifier": device_id,
             "name": name,
-            "client": "Romp",
+            "client": "ROM Play",
             "platform": std::env::consts::OS,
             "client_version": env!("CARGO_PKG_VERSION"),
             "requested_scopes": crate::romm::pairing::SCOPES,
@@ -623,7 +623,7 @@ impl Client {
 
     pub fn rom_file_url(&self, rom_id: i64, file: &RomFile) -> Url {
         let mut url = self.content_url(&format!("/api/roms/{rom_id}/content/"), &file.file_name);
-        // RomM 5.4's audit log records why a file was fetched; RomP keeps a copy to play.
+        // RomM 5.4's audit log records why a file was fetched; ROM Play keeps a copy to play.
         url.query_pairs_mut()
             .append_pair("file_ids", &file.id.to_string())
             .append_pair("purpose", "download");
@@ -981,8 +981,8 @@ pub(crate) mod tests {
             .and(path("/api/auth/device/init"))
             .and(body_json(serde_json::json!({
                 "client_device_identifier": "dev-1",
-                "name": "RomP on test",
-                "client": "Romp",
+                "name": "ROM Play on test",
+                "client": "ROM Play",
                 "platform": std::env::consts::OS,
                 "client_version": env!("CARGO_PKG_VERSION"),
                 "requested_scopes": crate::romm::pairing::SCOPES,
@@ -996,7 +996,7 @@ pub(crate) mod tests {
             .mount(&server)
             .await;
         let auth = Client::new(base_of(&server, "/"))
-            .device_init("dev-1", "RomP on test")
+            .device_init("dev-1", "ROM Play on test")
             .await
             .unwrap();
         assert_eq!(auth.user_code, "FDF64KC5");

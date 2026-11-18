@@ -3,9 +3,12 @@ VERSION ?= $(CARGO_VERSION)
 RELEASE := $(VERSION:v%=%)
 ARCH := $(shell uname -m)
 
-DIST := dist
-BIN := target/release
-BUNDLE_ID := io.github.rompemu.romp
+# Override to package outside iCloud Drive, whose file tags code signing refuses, e.g.
+# make app DIST=~/Library/Caches/rom-play/dist
+DIST ?= dist
+# Builds can live outside the checkout (CARGO_TARGET_DIR), e.g. when its path has a space.
+BIN := $(or $(CARGO_TARGET_DIR),target)/release
+BUNDLE_ID := io.github.afsrq.romplay
 ICON := crates/romp-app/assets/icon-macos.png
 MOLTENVK := 1.4.1
 MOLTENVK_SHA256 := 5ea0c259df7ded9a275444820f09cced54d6e5a7c7a31d262de62a5cdb7e15cf
@@ -21,20 +24,20 @@ NFPM_VERSION := 2.47.0
 NFPM_SHA256 := 0660ca602b2d2d2ae4781a06c692b3eeb9d437ffea05b831d76e41f4a3188783
 NFPM := target/nfpm-$(NFPM_VERSION)
 
-APP := $(DIST)/RomP.app
-ICONSET := $(DIST)/RomP.iconset
-MACOS_ZIP := $(DIST)/RomP-$(RELEASE)-macos-$(ARCH).zip
-LINUX_NAME := RomP-$(RELEASE)-linux-$(ARCH)
+APP := $(DIST)/ROM\ Play.app
+ICONSET := $(DIST)/ROMPlay.iconset
+MACOS_ZIP := $(DIST)/ROM-Play-$(RELEASE)-macos-$(ARCH).zip
+LINUX_NAME := ROM-Play-$(RELEASE)-linux-$(ARCH)
 LINUX_TAR := $(DIST)/$(LINUX_NAME).tar.gz
-APPDIR := $(DIST)/RomP.AppDir
-APPIMAGE := $(DIST)/RomP-$(RELEASE)-$(ARCH).AppImage
+APPDIR := $(DIST)/ROMPlay.AppDir
+APPIMAGE := $(DIST)/ROM-Play-$(RELEASE)-$(ARCH).AppImage
 # winit loads these when it starts on X11 and panics without them, and minimal installs
 # don't have libxkbcommon-x11, so the AppImage brings them. None is on AppImage's excludelist.
 LINUX_LIBDIR := /usr/lib/x86_64-linux-gnu
 APPIMAGE_LIBS := libxkbcommon.so.0 libxkbcommon-x11.so.0 libxcb-xkb.so.1
 APPIMAGE_LIB_PACKAGES := libxkbcommon0 libxkbcommon-x11-0 libxcb-xkb1
-PACKAGE := $(DIST)/RomP-$(RELEASE)-$(ARCH)
-WINDOWS_NAME := RomP-$(RELEASE)-windows-$(ARCH)
+PACKAGE := $(DIST)/ROM-Play-$(RELEASE)-$(ARCH)
+WINDOWS_NAME := ROM-Play-$(RELEASE)-windows-$(ARCH)
 WINDOWS_ZIP := $(DIST)/$(WINDOWS_NAME).zip
 
 ifeq ($(OS),Windows_NT)
@@ -110,8 +113,10 @@ app: build $(MOLTENVK_TAR)
 		sips -z $$size $$size $(ICON) --out $(ICONSET)/icon_$${size}x$${size}.png >/dev/null && \
 		sips -z $$((size * 2)) $$((size * 2)) $(ICON) --out $(ICONSET)/icon_$${size}x$${size}@2x.png >/dev/null || exit 1; \
 	done
-	iconutil --convert icns --output $(APP)/Contents/Resources/RomP.icns $(ICONSET)
+	iconutil --convert icns --output $(APP)/Contents/Resources/ROMPlay.icns $(ICONSET)
 	rm -rf $(ICONSET)
+	# Copied files can carry Finder metadata, which codesign refuses.
+	xattr -cr $(APP)
 	codesign --force --sign - $(APP)/Contents/Frameworks/libMoltenVK.dylib
 	codesign --force --sign - $(APP)/Contents/MacOS/romp-runner
 	codesign --force --sign - $(APP)
@@ -239,7 +244,7 @@ release-notes:
 		END { if (!printed) { print "No changelog entry for $(VERSION)" > "/dev/stderr"; exit 1 } }' CHANGELOG.md
 
 RCHEEVOS_DIR := crates/romp-cheevos/rcheevos
-# Only RAIntegration on Windows and external clients use these, and RomP builds neither.
+# Only RAIntegration on Windows and external clients use these, and ROM Play builds neither.
 RCHEEVOS_UNUSED := src/rc_client_external.c src/rc_client_raintegration.c
 
 # Replaces the bundled rcheevos with a release: the latest, or RCHEEVOS=v12.5.0.

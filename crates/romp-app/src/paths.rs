@@ -6,7 +6,7 @@ pub fn data_dir() -> PathBuf {
         .unwrap_or_else(|| {
             dirs::data_local_dir()
                 .unwrap_or_else(std::env::temp_dir)
-                .join("Romp")
+                .join("ROM Play")
         })
 }
 

@@ -464,7 +464,7 @@ pub fn default_options(core_id: &str) -> Vec<(String, String)> {
             ("pcsx2_renderer", "OpenGL"),
             ("pcsx2_shared_memory_cards", "disabled"),
         ],
-        // Both screens stacked with no gap, which Romp splits into two windows, touched with the mouse.
+        // Both screens stacked with no gap, which ROM Play splits into two windows, touched with the mouse.
         "melondsds" => &[
             ("melonds_touch_mode", "touch"),
             ("melonds_show_cursor", "disabled"),

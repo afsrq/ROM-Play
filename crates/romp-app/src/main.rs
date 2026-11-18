@@ -104,7 +104,7 @@ fn main() -> anyhow::Result<()> {
         }))
         .init();
     tracing::info!(
-        "RomP {} on {} {}",
+        "ROM Play {} on {} {}",
         env!("CARGO_PKG_VERSION"),
         std::env::consts::OS,
         std::env::consts::ARCH

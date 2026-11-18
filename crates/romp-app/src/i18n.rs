@@ -33,7 +33,7 @@ pub const LANGUAGES: [Language; 4] = [
 /// The preference for English; 0 follows the system, and from 2 on are `LANGUAGES`.
 pub const ENGLISH: u8 = 1;
 
-/// The chosen language, or else the system's if RomP has translations for it; `None` is English.
+/// The chosen language, or else the system's if ROM Play has translations for it; `None` is English.
 pub fn choose(
     preference: u8,
     system: Option<&str>,

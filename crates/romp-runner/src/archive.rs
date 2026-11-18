@@ -84,7 +84,7 @@ pub fn open_rom(
     })
 }
 
-/// Whether the core lists this file's type. Cores that list none take anything, and RomP's own
+/// Whether the core lists this file's type. Cores that list none take anything, and ROM Play's own
 /// .m3u playlists go to cores whether or not they mention them.
 pub fn plays(valid_extensions: &str, path: &Path) -> bool {
     let Some(ext) = path.extension().and_then(|e| e.to_str()) else {

@@ -10,6 +10,12 @@ const fn notice(name: &'static str, license: &'static str, url: &'static str) ->
     Notice { name, license, url }
 }
 
+const ROM_PLAY: Notice = notice(
+    "ROM Play",
+    "GPL-3.0 or later",
+    "https://github.com/afsrq/RomP-Enhanced/blob/main/LICENSE",
+);
+/// The project ROM Play is a fork of.
 const ROMP: Notice = notice(
     "RomP",
     "GPL-3.0 or later",
@@ -336,9 +342,9 @@ fn core_notice(core: &CoreInfo) -> Option<Notice> {
         .map(|(_, license, url)| notice(core.name, license, url))
 }
 
-/// Romp, then every emulator this computer can download, then the libraries it ships with.
+/// ROM Play, then every emulator this computer can download, then the libraries it ships with.
 pub fn notices() -> Vec<Notice> {
-    let mut notices = vec![ROMP];
+    let mut notices = vec![ROM_PLAY, ROMP];
     let mut cores: Vec<&CoreInfo> = all_cores().collect();
     cores.sort_by_key(|c| c.name.to_lowercase());
     cores.dedup_by_key(|c| c.id);
@@ -377,7 +383,7 @@ mod tests {
             );
         }
         let names: Vec<_> = notices().iter().map(|n| n.name).collect();
-        assert_eq!(names[0], "RomP");
+        assert_eq!(names[..2], ["ROM Play", "RomP"]);
         assert!(names.contains(&"Slint"));
         assert!(names.contains(&"SDL"));
         assert!(names.contains(&"Inter"));

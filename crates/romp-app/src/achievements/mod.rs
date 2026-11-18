@@ -79,7 +79,7 @@ fn now_millis() -> i64 {
 
 /// Keeps an unlock that didn't reach RetroAchievements, and forgets it once one attempt gets through.
 /// RetroAchievements only accepts hardcore unlocks from emulators on its approved list, which it
-/// considers once an emulator has been public for six months. Until Romp is on it, hardcore is off.
+/// considers once an emulator has been public for six months. Until ROM Play is on it, hardcore is off.
 pub const HARDCORE_ALLOWED: bool = false;
 
 pub fn note_unlock(
@@ -276,10 +276,10 @@ fn os() -> &'static str {
     }
 }
 
-/// `Romp/x.y.z (OS)` followed by what the runner adds: the core and rcheevos versions.
+/// `ROM Play/x.y.z (OS)` followed by what the runner adds: the core and rcheevos versions.
 pub fn user_agent(runner_part: &str) -> String {
     format!(
-        "Romp/{} ({}) {runner_part}",
+        "ROMPlay/{} ({}) {runner_part}",
         env!("CARGO_PKG_VERSION"),
         os()
     )
@@ -383,7 +383,7 @@ pub async fn sign_in(
         .map_err(|_| tr::tr!("Could not reach RetroAchievements"))?
         .json()
         .await
-        .map_err(|_| tr::tr!("RetroAchievements sent an answer RomP did not understand"))?;
+        .map_err(|_| tr::tr!("RetroAchievements sent an answer ROM Play did not understand"))?;
     if !reply.success || reply.token.is_empty() {
         return Err(if reply.error.is_empty() {
             tr::tr!("RetroAchievements did not accept the sign-in")
@@ -547,7 +547,7 @@ mod tests {
     #[test]
     fn the_user_agent_names_romp_then_the_core() {
         let agent = user_agent("Snes9x/1.63 rcheevos/12.5");
-        assert!(agent.starts_with(&format!("Romp/{} (", env!("CARGO_PKG_VERSION"))));
+        assert!(agent.starts_with(&format!("ROMPlay/{} (", env!("CARGO_PKG_VERSION"))));
         assert!(agent.ends_with(") Snes9x/1.63 rcheevos/12.5"));
     }
 
@@ -558,7 +558,7 @@ mod tests {
             .and(body_string_contains("r=login2"))
             .and(body_string_contains("u=Player"))
             .and(body_string_contains("p=hunter2"))
-            .and(header_regex("user-agent", "^Romp/"))
+            .and(header_regex("user-agent", "^ROMPlay/"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "Success": true, "User": "player", "Token": "tok", "Score": 1
             })))

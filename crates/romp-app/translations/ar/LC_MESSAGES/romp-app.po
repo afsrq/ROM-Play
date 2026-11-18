@@ -56,7 +56,7 @@ msgid "Emulators taken care of"
 msgstr "محاكي المحاكي يهتمون"
 
 #: crates/romp-app/ui/app.slint
-msgid "RomP sets up the right emulator for each game and runs it in a sandbox."
+msgid "ROM Play sets up the right emulator for each game and runs it in a sandbox."
 msgstr "يقوم رومب بإعداد المحاكي الصحيح لكل لعبة ويقوم بتشغيلها في صندوق رملي."
 
 #: crates/romp-app/ui/app.slint
@@ -72,11 +72,11 @@ msgid "Enter the address you open RomM at in your browser."
 msgstr "أدخل العنوان الذي تفتحه في متصفحك."
 
 #: crates/romp-app/ui/app.slint
-msgid "RomP works with RomM 5.0 or newer."
+msgid "ROM Play works with RomM 5.0 or newer."
 msgstr "يعمل رومبي مع RomM 5.0 أو أحدث."
 
 #: crates/romp-app/ui/app.slint
-msgid "This computer has no keychain, so your sign-in will be kept in a file in RomP's data folder that only your user account can read."
+msgid "This computer has no keychain, so your sign-in will be kept in a file in ROM Play's data folder that only your user account can read."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -247,11 +247,11 @@ msgid "Refresh library"
 msgstr "تحديث المكتبة"
 
 #: crates/romp-app/ui/app.slint
-msgid "RomP {} is available. Run “brew upgrade romp” to update."
+msgid "ROM Play {} is available. Run “brew upgrade romp” to update."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "RomP {} is available."
+msgid "ROM Play {} is available."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -267,7 +267,7 @@ msgid "Skip this version"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "Hide until RomP restarts"
+msgid "Hide until ROM Play restarts"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -473,11 +473,11 @@ msgid "Check for updates"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "Once a day, RomP asks GitHub for its newest version, and tells you when there is one."
+msgid "Once a day, ROM Play asks GitHub for its newest version, and tells you when there is one."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "Help translate RomP on Crowdin"
+msgid "Help translate ROM Play on Crowdin"
 msgstr "المساعدة في ترجمة رومبي على كراودِن"
 
 #: crates/romp-app/ui/app.slint
@@ -534,8 +534,8 @@ msgid "Signed in as {}"
 msgstr "تسجيل الدخول كـ {}"
 
 #: crates/romp-app/ui/app.slint
-msgid "Games with achievements show them as you play. RomP keeps a sign-in token, not your password."
-msgstr "تُظهر الألعاب التي تتضمن إنجازات هذه الإنجازات أثناء اللعب. يحتفظ RomP برمز تسجيل الدخول، وليس بكلمة مرورك."
+msgid "Games with achievements show them as you play. ROM Play keeps a sign-in token, not your password."
+msgstr "تُظهر الألعاب التي تتضمن إنجازات هذه الإنجازات أثناء اللعب. يحتفظ ROM Play برمز تسجيل الدخول، وليس بكلمة مرورك."
 
 #: crates/romp-app/ui/app.slint
 msgid "Hardcore mode"
@@ -566,7 +566,7 @@ msgid "Sign in"
 msgstr "تسجيل الدخول"
 
 #: crates/romp-app/ui/app.slint
-msgid "Earn achievements while you play. RomP keeps a sign-in token, not your password."
+msgid "Earn achievements while you play. ROM Play keeps a sign-in token, not your password."
 msgstr "اكسب الانجازات أثناء اللعب. يحتفظ رومبي برمز تسجيل الدخول، وليس كلمة المرور الخاصة بك."
 
 #: crates/romp-app/ui/app.slint
@@ -686,7 +686,7 @@ msgid "Done"
 msgstr "تم"
 
 #: crates/romp-app/ui/app.slint
-msgid "What’s new in RomP {}"
+msgid "What’s new in ROM Play {}"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -738,8 +738,8 @@ msgid "Copy the last game’s log"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "RomP and the emulators it downloads are each covered by their own license."
-msgstr "لكلٍّ من RomP والمحاكيات التي ينزّلها ترخيص خاص به."
+msgid "ROM Play and the emulators it downloads are each covered by their own license."
+msgstr "لكلٍّ من ROM Play والمحاكيات التي ينزّلها ترخيص خاص به."
 
 #: crates/romp-app/ui/app.slint
 msgid "License"

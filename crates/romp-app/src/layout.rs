@@ -198,8 +198,8 @@ fn is_track(p: &Path, files: &[PlannedFile]) -> bool {
 }
 
 /// The files a player can choose to start a multi-file game with, such as a game with its
-/// translations or a folder of hacks of one game, the one RomP starts by itself first; or
-/// nothing when RomP starts the whole set itself: several discs, a PS3 game. A playlist stands
+/// translations or a folder of hacks of one game, the one ROM Play starts by itself first; or
+/// nothing when ROM Play starts the whole set itself: several discs, a PS3 game. A playlist stands
 /// for its discs, which share its saves.
 pub fn file_choices(rom: &RomDetail, files: &[PlannedFile]) -> Vec<PathBuf> {
     // RomM counts only the files at the top of a game's folder as multiple, so a game with

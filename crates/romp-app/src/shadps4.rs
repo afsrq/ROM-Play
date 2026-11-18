@@ -1,6 +1,6 @@
 //! The PlayStation 4, played with shadPS4 started as its own program.
 //!
-//! shadPS4 itself has no window of its own besides the game: RomP is its library, and the
+//! shadPS4 itself has no window of its own besides the game: ROM Play is its library, and the
 //! shadPS4 QtLauncher, opened on the same folder, is where its settings are changed.
 
 use crate::external::{Asset, Emulator, Running};
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 const PLATFORMS: [&str; 2] = ["ps4", "ps4--1"];
 /// The latest stable release. The daily builds are pre-releases, which this skips.
 pub const RELEASES: &str = "https://api.github.com/repos/shadps4-emu/shadPS4/releases/latest";
-/// QtLauncher only publishes pre-releases, so RomP takes the newest from the list.
+/// QtLauncher only publishes pre-releases, so ROM Play takes the newest from the list.
 pub const LAUNCHER_RELEASES: &str =
     "https://api.github.com/repos/shadps4-emu/shadps4-qtlauncher/releases?per_page=10";
 /// shadPS4 keeps its settings, saves and shader cache in a folder named `user` in the folder
@@ -35,7 +35,7 @@ fn build() -> Option<(&'static str, &'static str)> {
     }
 }
 
-/// QtLauncher's macOS download is the only one RomP knows the layout of so far.
+/// QtLauncher's macOS download is the only one ROM Play knows the layout of so far.
 fn launcher_build() -> Option<&'static str> {
     cfg!(all(target_os = "macos", target_arch = "aarch64")).then_some("shadPS4QtLauncher-macos-qt-")
 }
@@ -92,10 +92,10 @@ pub fn launcher(dir: PathBuf) -> Emulator {
     }
 }
 
-/// The name RomP's own shadPS4 goes by in QtLauncher's list of builds.
-const LAUNCHER_VERSION_NAME: &str = "RomP";
+/// The name ROM Play's own shadPS4 goes by in QtLauncher's list of builds.
+const LAUNCHER_VERSION_NAME: &str = "ROM Play";
 
-/// QtLauncher's list of shadPS4 builds, with RomP's replacing any older entry of its own.
+/// QtLauncher's list of shadPS4 builds, with ROM Play's replacing any older entry of its own.
 fn versions_json(existing: Option<&str>, exe: &Path) -> String {
     let mut list: Vec<serde_json::Value> = existing
         .and_then(|text| serde_json::from_str(text).ok())
@@ -105,7 +105,7 @@ fn versions_json(existing: Option<&str>, exe: &Path) -> String {
         "name": LAUNCHER_VERSION_NAME,
         "path": exe.to_string_lossy(),
         "date": "",
-        "codename": "RomP",
+        "codename": "ROM Play",
         // QtLauncher's "Custom" kind, for a build it didn't download itself.
         "type": 2,
     }));
@@ -183,7 +183,7 @@ pub fn emulator(dir: PathBuf) -> Emulator {
     }
 }
 
-/// shadPS4's settings, saves and caches, kept apart from any shadPS4 installed outside RomP.
+/// shadPS4's settings, saves and caches, kept apart from any shadPS4 installed outside ROM Play.
 pub struct Home(pub PathBuf);
 
 impl Home {
@@ -202,7 +202,7 @@ impl Home {
         self.0.join("launcher")
     }
 
-    /// Makes RomP's shadPS4 the build QtLauncher uses, so both share one set of settings.
+    /// Makes ROM Play's shadPS4 the build QtLauncher uses, so both share one set of settings.
     pub fn point_launcher_at(&self, shadps4: &Path) -> std::io::Result<()> {
         self.prepare()?;
         let dir = self.launcher_dir();
@@ -219,7 +219,7 @@ impl Home {
         )
     }
 
-    /// Opens QtLauncher on RomP's shadPS4 folder. It isn't waited for: it's an app of its own.
+    /// Opens QtLauncher on ROM Play's shadPS4 folder. It isn't waited for: it's an app of its own.
     pub fn open_launcher(&self, launcher: &Path) -> std::io::Result<()> {
         std::process::Command::new(launcher)
             .current_dir(&self.0)
@@ -275,7 +275,7 @@ pub fn boot_path(rom: &Path) -> Result<PathBuf, String> {
         .map(|e| format!(".{}", e.to_string_lossy()))
         .unwrap_or_default();
     Err(tr::tr!(
-        "RomP plays PS4 games stored as an installed game folder with an eboot.bin, or a zip or 7z of one, and this one is a {kind} file.",
+        "ROM Play plays PS4 games stored as an installed game folder with an eboot.bin, or a zip or 7z of one, and this one is a {kind} file.",
         kind
     ))
 }
@@ -449,10 +449,10 @@ mod tests {
             .iter()
             .map(|v| v["name"].as_str().unwrap())
             .collect();
-        assert_eq!(names, ["Mine", "RomP"]);
+        assert_eq!(names, ["Mine", "ROM Play"]);
         assert_eq!(merged[1]["path"], exe.to_string_lossy().as_ref());
         // Unreadable lists start over rather than failing.
-        assert!(versions_json(Some("not json"), exe).contains("RomP"));
+        assert!(versions_json(Some("not json"), exe).contains("ROM Play"));
     }
 
     #[test]
@@ -543,7 +543,7 @@ mod tests {
         assert_eq!(mode & 0o111, 0o111);
     }
 
-    /// Checks the real releases still unpack the way RomP expects. Run it with
+    /// Checks the real releases still unpack the way ROM Play expects. Run it with
     /// `cargo test -p romp-app real_releases -- --ignored` after shadPS4 changes its packaging.
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     #[tokio::test]
@@ -551,7 +551,7 @@ mod tests {
     async fn real_releases_install_and_point_at_each_other() {
         let dir = tempfile::tempdir().unwrap();
         let http = reqwest::Client::builder()
-            .user_agent("RomP tests")
+            .user_agent("ROM Play tests")
             .build()
             .unwrap();
         let exe = emulator(dir.path().join("shadps4"))

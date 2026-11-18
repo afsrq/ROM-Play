@@ -63,7 +63,7 @@ pub fn emulator(dir: PathBuf) -> Emulator {
     }
 }
 
-/// RPCS3's settings, system software and saves, kept apart from any RPCS3 installed outside Romp.
+/// RPCS3's settings, system software and saves, kept apart from any RPCS3 installed outside ROM Play.
 pub struct Home(pub PathBuf);
 
 impl Home {
@@ -165,7 +165,7 @@ pub fn boot_path(rom: &Path) -> Result<&Path, String> {
         .map(|e| format!(".{}", e.to_string_lossy()))
         .unwrap_or_else(|| name.clone());
     Err(tr::tr!(
-        "RomP plays PS3 games stored as a game folder, an ISO, or a zip or 7z of one, and this one is a {kind} file.",
+        "ROM Play plays PS3 games stored as a game folder, an ISO, or a zip or 7z of one, and this one is a {kind} file.",
         kind
     ))
 }
