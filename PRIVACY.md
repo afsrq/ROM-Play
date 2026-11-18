@@ -8,6 +8,7 @@ ROM Play only talks to these services, and only to do what you ask of it:
 
 | Service | When | What it receives |
 |---|---|---|
+| Ryubing (git.ryujinx.app) | When ROM Play installs the Switch emulator | A request for that build |
 | Your RomM server | While you use your library | Your sign-in, the requests for your library, covers and games, your saves, save states and screenshots, play sessions and play time, and a device name made of "ROM Play on" and your computer's name |
 | RetroAchievements (retroachievements.org) | Only after you sign in to it in Settings | Your username, a sign-in token, which game you're playing (by the game file's hash), the achievements you unlock, leaderboard scores and what you're doing in the game ("rich presence") |
 | libretro buildbot (buildbot.libretro.com) | When ROM Play installs or updates an emulator, or system files one needs | A request for that file |

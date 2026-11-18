@@ -11,6 +11,7 @@ use crate::play::{self, CoreIdentity, GameOptions};
 use crate::restore::{game_window_key, Placement};
 use crate::romm::client::Error;
 use crate::rpcs3;
+use crate::ryujinx;
 use crate::saves::{self, SramOutcome};
 use crate::shadps4;
 use crate::store::GameDetail;
@@ -60,6 +61,7 @@ pub(super) fn playable(platform_slug: &str) -> bool {
         || platform_slug == xemu::PLATFORM
         || (platform_slug == rpcs3::PLATFORM && rpcs3::available())
         || (shadps4::is_platform(platform_slug) && shadps4::available())
+        || (platform_slug == ryujinx::PLATFORM && ryujinx::available())
 }
 
 /// What started a download: the game page's button, or a game sent from RomM.
@@ -536,6 +538,8 @@ impl Controller {
                     Some(rpcs3::unpack_game)
                 } else if shadps4::is_platform(&detail.platform_slug) && shadps4::is_archive(path) {
                     Some(shadps4::unpack_game)
+                } else if detail.platform_slug == ryujinx::PLATFORM && ryujinx::is_archive(path) {
+                    Some(ryujinx::unpack_game)
                 } else {
                     None
                 };
@@ -683,6 +687,9 @@ impl Controller {
         }
         if shadps4::is_platform(&detail.platform_slug) {
             return self.play_with_shadps4(detail, rom);
+        }
+        if detail.platform_slug == ryujinx::PLATFORM {
+            return self.play_with_ryujinx(detail, rom);
         }
         let Some(core) = core_for_platform(&detail.platform_slug) else {
             return;
@@ -1025,6 +1032,120 @@ impl Controller {
             Err(e) => self.game_status(
                 detail.id,
                 tr!("Could not start {name}: {e}", name = "RPCS3", e),
+            ),
+        }
+    }
+
+    /// Switch games: installs the pinned Ryubing, brings the keys and firmware from RomM's
+    /// Switch firmware, and the first time, has Ryubing install the firmware.
+    fn play_with_ryujinx(&self, detail: GameDetail, rom: PathBuf) {
+        self.set_preparing(true);
+        self.game_status(detail.id, tr!("Getting ready…"));
+        let http = self.shared.http.clone();
+        let client = self.client.borrow().clone();
+        let offline = self.offline.get();
+        self.shared.rt.spawn(async move {
+            let id = detail.id;
+            let emulator = ryujinx::emulator(paths::cores_dir().join("ryujinx"));
+            let exe = emulator
+                .ensure(&http, offline, installing_status(id, "Ryubing"))
+                .await
+                .map(Ready::exe);
+            let system = paths::system_dir();
+            let mut missing = bios::missing(&detail.platform_slug, &system);
+            let firmware_wanted = ryujinx::find_firmware(&bios::switch_dir(&system)).is_none();
+            if (!missing.is_empty() || firmware_wanted) && !offline {
+                if let Some(client) = &client {
+                    if let Ok(still) = bios::ensure(
+                        client,
+                        detail.platform_id,
+                        &detail.platform_slug,
+                        &system,
+                        &AtomicBool::new(false),
+                    )
+                    .await
+                    {
+                        missing = still;
+                    }
+                }
+            }
+            on_ui(move |c| c.launch_ryujinx(detail, rom, exe, missing));
+        });
+    }
+
+    fn launch_ryujinx(
+        &self,
+        detail: GameDetail,
+        rom: PathBuf,
+        ready: Result<PathBuf, String>,
+        missing: Vec<String>,
+    ) {
+        self.set_preparing(false);
+        let exe = match ready {
+            Ok(exe) => exe,
+            Err(e) => return self.game_status(detail.id, e),
+        };
+        if !missing.is_empty() {
+            return self.game_status(detail.id, bios::missing_message(&missing));
+        }
+        let boot = match ryujinx::boot_path(&rom) {
+            Ok(boot) => boot,
+            Err(e) => return self.game_status(detail.id, e),
+        };
+        let switch = bios::switch_dir(&paths::system_dir());
+        let home = ryujinx::Home(paths::data_dir().join("ryujinx"));
+        if let Err(e) = home.take_keys(&switch) {
+            return self.game_status(
+                detail.id,
+                tr!(
+                    "Could not write {name}'s settings: {e}",
+                    name = "Ryubing",
+                    e
+                ),
+            );
+        }
+        let firmware = (!home.firmware_installed())
+            .then(|| ryujinx::find_firmware(&switch))
+            .flatten();
+        let fullscreen = self.prefs.get().fullscreen;
+        let start = match &firmware {
+            Some(firmware) => ryujinx::Start::InstallFirmware(firmware),
+            None => ryujinx::Start::Game {
+                boot: &boot,
+                fullscreen,
+            },
+        };
+        let id = detail.id;
+        let installing_firmware = firmware.is_some();
+        let on_exit = move |code: Option<i32>, log: Vec<String>| {
+            let _ = slint::invoke_from_event_loop(move || {
+                with_controller(|c| {
+                    c.external_closed(id, "Ryubing", code, log);
+                    if installing_firmware {
+                        c.game_status(id, tr!("Press Play again to start the game."));
+                    }
+                });
+            });
+        };
+        match ryujinx::launch(&exe, &home, &start, on_exit) {
+            Ok(running) => {
+                *self.running.borrow_mut() = Some(play::RunningGame::External(running));
+                self.refresh_play_button();
+                if installing_firmware {
+                    // The firmware goes in once, through Ryubing's own window, before games start.
+                    self.game_status(
+                        id,
+                        tr!("Ryubing is installing the Switch firmware from your RomM. Confirm it there, then quit Ryubing and press Play again."),
+                    );
+                } else {
+                    self.game_status(id, String::new());
+                    self.record_play(id);
+                    *self.playing.borrow_mut() = Some(detail);
+                }
+            }
+            Err(e) => self.game_status(
+                detail.id,
+                tr!("Could not start {name}: {e}", name = "Ryubing", e),
             ),
         }
     }

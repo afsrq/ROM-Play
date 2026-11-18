@@ -4,6 +4,12 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-18
+
+### Added
+
+- Nintendo Switch games from RomM play with Ryubing, the maintained continuation of Ryujinx. ROM Play installs it, keeping its settings, saves and firmware apart from any Ryujinx you installed yourself, and takes the Switch keys (prod.keys and title.keys) from RomM's Switch firmware. If a firmware .zip is there too, Ryubing installs it the first time, after you confirm it in its window. Games play from an .nsp or .xci, or a zip or 7z of one. Ryubing publishes no checksums, so ROM Play installs only the build it was released with, Ryubing 1.3.3, checked against its checksum.
+
 ## [0.25.0] - 2026-11-18
 
 ### Added
@@ -390,7 +396,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/afsrq/ROM-Play/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/afsrq/ROM-Play/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/afsrq/ROM-Play/compare/v0.23.1...v0.24.0
 [0.23.1]: https://github.com/afsrq/ROM-Play/compare/v0.23.0...v0.23.1

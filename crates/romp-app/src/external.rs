@@ -224,6 +224,98 @@ impl Emulator {
     }
 }
 
+/// An emulator whose project publishes no checksums, so RomP only installs the one build it was
+/// released with, checked against the SHA-256 written here. A newer build comes with a RomP update.
+pub struct Pinned {
+    pub name: &'static str,
+    pub dir: PathBuf,
+    pub version: &'static str,
+    pub url: &'static str,
+    /// The download's file name, which says how to unpack it.
+    pub file: &'static str,
+    pub sha256: &'static str,
+    pub exe_in: fn(&Path) -> PathBuf,
+}
+
+impl Pinned {
+    fn manifest(&self) -> Option<Manifest> {
+        serde_json::from_slice(&std::fs::read(self.dir.join("manifest.json")).ok()?).ok()
+    }
+
+    /// The installed program, when it's the pinned build.
+    pub fn installed(&self) -> Option<PathBuf> {
+        let manifest = self.manifest().filter(|m| m.version == self.version)?;
+        let exe = self.dir.join(manifest.exe);
+        exe.is_file().then_some(exe)
+    }
+
+    /// Installs the pinned build, replacing any other, before a game starts. `installing` is
+    /// told whether another build was there.
+    pub async fn ensure(
+        &self,
+        http: &reqwest::Client,
+        offline: bool,
+        installing: impl FnOnce(bool),
+    ) -> Result<Ready, String> {
+        if let Some(exe) = self.installed() {
+            return Ok(Ready::Current(exe));
+        }
+        let name = self.name;
+        if offline {
+            return Err(tr::tr!("{name} has not been installed yet", name));
+        }
+        let old = self.manifest().map(|m| m.version);
+        installing(old.is_some());
+        let bytes = http
+            .get(self.url)
+            .send()
+            .await
+            .map_err(|_| tr::tr!("Could not reach the internet to download {name}", name))?
+            .error_for_status()
+            .map_err(|e| tr::tr!("{name} is not available right now ({e})", name, e))?
+            .bytes()
+            .await
+            .map_err(|e| e.to_string())?;
+        if !crate::cores::sha256_hex(&bytes).eq_ignore_ascii_case(self.sha256) {
+            return Err(tr::tr!(
+                "The {name} download did not match its checksum",
+                name
+            ));
+        }
+        let version_dir = self.dir.join(self.version);
+        let dir = version_dir.clone();
+        let file = self.file;
+        tokio::task::spawn_blocking(move || unpack(&bytes, &dir, file))
+            .await
+            .map_err(|e| e.to_string())?
+            .map_err(|e| tr::tr!("Could not unpack {name}: {e}", name, e))?;
+        let exe = (self.exe_in)(&version_dir);
+        if !exe.is_file() {
+            return Err(tr::tr!(
+                "The {name} download did not contain the emulator",
+                name
+            ));
+        }
+        let manifest = Manifest {
+            version: self.version.to_string(),
+            exe: exe
+                .strip_prefix(&self.dir)
+                .map_err(|e| e.to_string())?
+                .to_string_lossy()
+                .into_owned(),
+        };
+        std::fs::write(
+            self.dir.join("manifest.json"),
+            serde_json::to_vec_pretty(&manifest).expect("manifest json"),
+        )
+        .map_err(|e| e.to_string())?;
+        if let Some(old) = old.filter(|v| v != self.version && is_plain_name(v)) {
+            let _ = std::fs::remove_dir_all(self.dir.join(old));
+        }
+        Ok(Ready::Installed(exe))
+    }
+}
+
 /// A release tag becomes a folder name, so it must be one plain name that stays inside the folder.
 fn is_plain_name(tag: &str) -> bool {
     let mut parts = Path::new(tag).components();
@@ -240,6 +332,14 @@ fn matches_digest(digest: Option<&str>, bytes: &[u8]) -> bool {
 fn unpack(bytes: &[u8], dir: &Path, name: &str) -> Result<(), String> {
     let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
+        // tar keeps an app bundle's links and permissions.
+        return unpack_with(bytes, dir, name, |archive| {
+            let mut tar = std::process::Command::new("tar");
+            tar.arg("-xzf").arg(archive).arg("-C").arg(dir);
+            tar
+        });
+    }
     if name.ends_with(".zip") && cfg!(target_os = "macos") {
         unpack_with(bytes, dir, name, |archive| {
             let mut ditto = std::process::Command::new("/usr/bin/ditto");
@@ -605,6 +705,89 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let server = github("v1", b"one").await;
         assert!(ensure(&emulator(dir.path()), &server, true).await.is_err());
+    }
+
+    fn tar_gz_of(name: &str, contents: &[u8]) -> Vec<u8> {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("src/Emu.app")).unwrap();
+        std::fs::write(dir.path().join("src/Emu.app").join(name), contents).unwrap();
+        let out = dir.path().join("emu.tar.gz");
+        let status = std::process::Command::new("tar")
+            .arg("-czf")
+            .arg(&out)
+            .arg("-C")
+            .arg(dir.path().join("src"))
+            .arg("Emu.app")
+            .status()
+            .unwrap();
+        assert!(status.success());
+        std::fs::read(out).unwrap()
+    }
+
+    fn pinned(
+        dir: &Path,
+        url: &'static str,
+        sha256: &'static str,
+        version: &'static str,
+    ) -> Pinned {
+        Pinned {
+            name: "Emu",
+            dir: dir.to_path_buf(),
+            version,
+            url,
+            file: "emu.tar.gz",
+            sha256,
+            exe_in: |dir| dir.join("Emu.app/emu"),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_pinned_build_installs_only_when_it_matches_its_checksum() {
+        let bytes = tar_gz_of("emu", b"binary");
+        let sha = Box::leak(crate::cores::sha256_hex(&bytes).into_boxed_str());
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/emu.tar.gz"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(bytes))
+            .mount(&server)
+            .await;
+        let url = Box::leak(format!("{}/emu.tar.gz", server.uri()).into_boxed_str());
+        let http = reqwest::Client::new();
+        let dir = tempfile::tempdir().unwrap();
+
+        let wrong = pinned(dir.path(), url, "00", "1.0");
+        assert!(
+            wrong.ensure(&http, false, |_| {}).await.is_err(),
+            "a mismatch is refused"
+        );
+        assert!(wrong.installed().is_none());
+
+        let emu = pinned(dir.path(), url, sha, "1.0");
+        let exe = dir.path().join("1.0/Emu.app/emu");
+        assert_eq!(
+            emu.ensure(&http, false, |_| {}).await,
+            Ok(Ready::Installed(exe.clone()))
+        );
+        assert_eq!(
+            emu.ensure(&http, true, |_| {}).await,
+            Ok(Ready::Current(exe))
+        );
+
+        let mut was_there = None;
+        let newer = pinned(dir.path(), url, sha, "2.0");
+        newer
+            .ensure(&http, false, |there| was_there = Some(there))
+            .await
+            .unwrap();
+        assert_eq!(was_there, Some(true));
+        assert!(!dir.path().join("1.0").exists(), "the old build is removed");
+        assert!(
+            pinned(tempfile::tempdir().unwrap().path(), url, sha, "1.0")
+                .ensure(&http, true, |_| {})
+                .await
+                .is_err(),
+            "nothing to play offline before the first install"
+        );
     }
 
     #[test]

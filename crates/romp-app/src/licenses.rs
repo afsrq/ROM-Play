@@ -41,6 +41,11 @@ const SHADPS4: Notice = notice(
     "GPL-2.0 or later",
     "https://github.com/shadps4-emu/shadPS4/blob/main/LICENSE",
 );
+const RYUBING: Notice = notice(
+    "Ryubing",
+    "MIT",
+    "https://git.ryujinx.app/projects/Ryubing/src/branch/master/LICENSE.txt",
+);
 const RCHEEVOS: Notice = notice(
     "rcheevos",
     "MIT",
@@ -357,6 +362,9 @@ pub fn notices() -> Vec<Notice> {
     }
     if crate::shadps4::available() {
         notices.push(SHADPS4);
+    }
+    if crate::ryujinx::available() {
+        notices.push(RYUBING);
     }
     if cfg!(target_os = "macos") {
         notices.push(MOLTENVK);
