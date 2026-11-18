@@ -314,6 +314,11 @@ static CORE_LICENSES: &[(&str, &str, &str)] = &[
         "https://github.com/JesseTG/melonds-ds/blob/main/LICENSE",
     ),
     (
+        "azahar",
+        "GPL-3.0",
+        "https://github.com/azahar-emu/azahar/blob/master/LICENSE.txt",
+    ),
+    (
         "dolphin",
         "GPL-2.0 or later",
         "https://github.com/libretro/dolphin/blob/master/COPYING",

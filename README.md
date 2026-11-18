@@ -31,7 +31,7 @@ ROM Play is based on [RomP](https://github.com/RompEmu/RomP) by Beshr Kayali Rei
 - **Controllers and multiplayer:** gamepads join as the next player, rumble when the game does, any key or button can be remapped, and the whole app works with a controller.
 - **Light guns, mice and keyboards:** for the systems that use them.
 - **In-game menu:** pause, restart, save slots, changing discs, volume and full screen, from the Guide button or Esc.
-- **Two-screen Nintendo DS:** a window per screen, with the mouse as the touch pen.
+- **Two-screen Nintendo DS and 3DS:** a window per screen, with the mouse as the touch pen.
 - **Picks up where you left off:** the last console, game and scroll position, and the size and position of every window.
 - **Interface sizes:** 1x, 1.5x or 2x.
 ## Supported systems
@@ -71,6 +71,7 @@ ROM Play downloads the emulator for each system the first time you play one of i
 | Nintendo 64 | Mupen64Plus-Next |
 | Game Boy, Game Boy Color and Game Boy Advance | mGBA |
 | Nintendo DS | melonDS DS |
+| Nintendo 3DS and New 3DS | [Azahar](https://github.com/azahar-emu/azahar), which carries on Citra |
 | Nintendo GameCube and Wii | Dolphin |
 | Nintendo Virtual Boy | Beetle VB |
 | Nintendo Game & Watch | Game & Watch |
@@ -96,7 +97,7 @@ ROM Play downloads the emulator for each system the first time you play one of i
 | Microsoft Xbox | xemu |
 | ZX Spectrum | Fuse |
 
-All emulators except xemu, RPCS3, shadPS4 and Ryubing are [libretro](https://www.libretro.com) cores. ARMSX2 and FAKE-08 aren't built by libretro, so ROM Play downloads them from RompEmu's own forks, which build them for each platform. Dolphin, PPSSPP, Flycast, Beetle PSX HW, Mupen64Plus-Next and the PS2 emulators draw through Vulkan when the computer has a working Vulkan driver, and through OpenGL otherwise. On macOS, Vulkan comes from the bundled [MoltenVK](https://github.com/KhronosGroup/MoltenVK). Some systems need BIOS files, which ROM Play takes from your RomM server's firmware. PS3 games need the PS3 system software (`PS3UPDAT.PUP`) in RomM's PS3 firmware, and play from a game folder or an ISO, or a zip or 7z of one. PS4 games play from an installed game folder with an `eboot.bin`, or a zip or 7z of one; `.pkg` files aren't supported. Switch games need the keys from your own Switch (`prod.keys`, and `title.keys` if you have it) in RomM's Switch firmware, and play from an .nsp or .xci, or a zip or 7z of one. If a Switch firmware .zip is there too, ROM Play has Ryubing install it the first time. Ryubing publishes no checksums, so ROM Play installs only the build it was released with, checked against its own copy of that build's checksum. How well a PS4 game runs depends on the game and the Mac: see [shadPS4's compatibility list](https://github.com/shadps4-compatibility/shadps4-game-compatibility).
+All emulators except xemu, RPCS3, shadPS4 and Ryubing are [libretro](https://www.libretro.com) cores. ARMSX2 and FAKE-08 aren't built by libretro, so ROM Play downloads them from RompEmu's own forks, which build them for each platform, and Azahar from Azahar's own releases, checked against the checksums GitHub publishes. Azahar draws through Vulkan. Dolphin, PPSSPP, Flycast, Beetle PSX HW, Mupen64Plus-Next and the PS2 emulators draw through Vulkan when the computer has a working Vulkan driver, and through OpenGL otherwise. On macOS, Vulkan comes from the bundled [MoltenVK](https://github.com/KhronosGroup/MoltenVK). Some systems need BIOS files, which ROM Play takes from your RomM server's firmware. PS3 games need the PS3 system software (`PS3UPDAT.PUP`) in RomM's PS3 firmware, and play from a game folder or an ISO, or a zip or 7z of one. PS4 games play from an installed game folder with an `eboot.bin`, or a zip or 7z of one; `.pkg` files aren't supported. Switch games need the keys from your own Switch (`prod.keys`, and `title.keys` if you have it) in RomM's Switch firmware, and play from an .nsp or .xci, or a zip or 7z of one. If a Switch firmware .zip is there too, ROM Play has Ryubing install it the first time. Ryubing publishes no checksums, so ROM Play installs only the build it was released with, checked against its own copy of that build's checksum. How well a PS4 game runs depends on the game and the Mac: see [shadPS4's compatibility list](https://github.com/shadps4-compatibility/shadps4-game-compatibility).
 
 ## Building
 

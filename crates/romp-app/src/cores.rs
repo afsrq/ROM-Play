@@ -35,6 +35,60 @@ const RELEASED: [(&CoreInfo, &str, &str); 2] = [
     (&FAKE08, FAKE08_RELEASE, FAKE08_ASSET),
 ];
 
+/// Azahar, the 3DS emulator that carries on Citra, publishes its own libretro core with each release.
+const AZAHAR: CoreInfo = core("azahar", "Azahar", "azahar_libretro", true);
+pub const AZAHAR_RELEASES: &str = "https://api.github.com/repos/azahar-emu/azahar/releases/latest";
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const AZAHAR_ASSET: &str = "azahar-libretro-macos-arm64-";
+#[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
+const AZAHAR_ASSET: &str = "azahar-libretro-macos-x86_64-";
+#[cfg(windows)]
+const AZAHAR_ASSET: &str = "azahar-libretro-windows-x86_64-";
+#[cfg(not(any(target_os = "macos", windows)))]
+const AZAHAR_ASSET: &str = "azahar-libretro-linux-x86_64-";
+
+/// Cores published as GitHub releases whose files are named with their version, so ROM Play asks
+/// GitHub for the newest and checks it against the digest GitHub published:
+/// (core, its latest release, the start of this computer's file's name).
+const GITHUB_RELEASED: [(&CoreInfo, &str, &str); 1] = [(&AZAHAR, AZAHAR_RELEASES, AZAHAR_ASSET)];
+
+fn github_released(core: &CoreInfo) -> Option<(&'static str, &'static str)> {
+    GITHUB_RELEASED
+        .iter()
+        .find(|(c, _, _)| c.id == core.id)
+        .map(|(_, base, prefix)| (*base, *prefix))
+}
+
+#[derive(serde::Deserialize)]
+struct GitHubRelease {
+    tag_name: String,
+    assets: Vec<crate::external::Asset>,
+}
+
+/// The newest release's file for this computer, and the release's tag, from GitHub.
+async fn latest_github_asset(
+    http: &reqwest::Client,
+    releases: &str,
+    prefix: &str,
+) -> Result<(crate::external::Asset, String), String> {
+    let release: GitHubRelease = http
+        .get(releases)
+        .header(reqwest::header::ACCEPT, "application/vnd.github+json")
+        .send()
+        .await
+        .and_then(reqwest::Response::error_for_status)
+        .map_err(|_| tr::tr!("Could not reach the core download server"))?
+        .json()
+        .await
+        .map_err(|e| e.to_string())?;
+    let asset = release
+        .assets
+        .into_iter()
+        .find(|a| a.name.starts_with(prefix) && a.name.ends_with(".zip"))
+        .ok_or_else(|| tr::tr!("The core is not available for this computer"))?;
+    Ok((asset, release.tag_name))
+}
+
 fn released(core: &CoreInfo) -> Option<(&'static str, &'static str)> {
     RELEASED
         .iter()
@@ -267,6 +321,7 @@ static CORES: &[(&[&str], CoreInfo)] = &[
         &["nds"],
         core("melondsds", "melonDS DS", "melondsds_libretro", true),
     ),
+    (&["3ds", "new-nintendo-3ds"], AZAHAR),
     (&["ps2"], PS2),
     (
         &["ngc", "wii"],
@@ -301,7 +356,7 @@ pub fn core_for_platform(slug: &str) -> Option<&'static CoreInfo> {
         .map(|(_, c)| c)
 }
 
-const NINTENDO: [&str; 11] = [
+const NINTENDO: [&str; 13] = [
     "nes",
     "famicom",
     "fds",
@@ -312,6 +367,8 @@ const NINTENDO: [&str; 11] = [
     "gbc",
     "gba",
     "nds",
+    "3ds",
+    "new-nintendo-3ds",
     "virtualboy",
 ];
 
@@ -361,7 +418,7 @@ const fn vulkan_core(
 
 // These draw through Vulkan where this computer has a working Vulkan device, which on
 // macOS is the bundled MoltenVK.
-const VULKAN_CORES: [VulkanCore; 6] = [
+const VULKAN_CORES: [VulkanCore; 7] = [
     VulkanCore {
         needs_surface: true,
         ..vulkan_core("dolphin", &[])
@@ -377,6 +434,8 @@ const VULKAN_CORES: [VulkanCore; 6] = [
     ),
     vulkan_core("ppsspp", &[("ppsspp_backend", "vulkan")]),
     vulkan_core("pcsx2", &[("pcsx2_renderer", "Vulkan")]),
+    // macOS's OpenGL is too old for Azahar's, so it draws through Vulkan there.
+    vulkan_core("azahar", &[("citra_graphics_api", "Vulkan")]),
 ];
 
 fn vulkan_options(core_id: &str) -> Option<&'static [(&'static str, &'static str)]> {
@@ -398,7 +457,9 @@ pub fn uses_vulkan(core_id: &str) -> bool {
 }
 
 pub fn download_base(core: &CoreInfo) -> &'static str {
-    released(core).map_or(BUILDBOT, |(base, _)| base)
+    released(core)
+        .or_else(|| github_released(core))
+        .map_or(BUILDBOT, |(base, _)| base)
 }
 
 fn core_url(base: &str, core: &CoreInfo) -> String {
@@ -463,6 +524,12 @@ pub fn default_options(core_id: &str) -> Vec<(String, String)> {
         "pcsx2" => &[
             ("pcsx2_renderer", "OpenGL"),
             ("pcsx2_shared_memory_cards", "disabled"),
+        ],
+        // The 3DS's screens stacked, like the DS's, which ROM Play splits into two windows.
+        "azahar" => &[
+            ("citra_layout_option", "default"),
+            ("citra_swap_screen", "Top"),
+            ("citra_use_libretro_save_path", "LibRetro Default"),
         ],
         // Both screens stacked with no gap, which ROM Play splits into two windows, touched with the mouse.
         "melondsds" => &[
@@ -647,7 +714,7 @@ impl Cores {
         base: &str,
         core: &CoreInfo,
     ) -> bool {
-        if released(core).is_none() {
+        if released(core).is_none() && github_released(core).is_none() {
             return false;
         }
         let Some(manifest) = std::fs::read(self.dir.join(core.id).join("manifest.json"))
@@ -656,6 +723,11 @@ impl Cores {
         else {
             return false;
         };
+        if let Some((_, prefix)) = github_released(core) {
+            return latest_github_asset(http, base, prefix)
+                .await
+                .is_ok_and(|(_, tag)| tag != manifest.version);
+        }
         published_checksum(http, &core_url(base, core))
             .await
             .is_ok_and(|latest| latest != manifest.version)
@@ -675,7 +747,14 @@ impl Cores {
         base: &str,
         core: &CoreInfo,
     ) -> Result<PathBuf, String> {
-        let url = core_url(base, core);
+        let github = match github_released(core) {
+            Some((_, prefix)) => Some(latest_github_asset(http, base, prefix).await?),
+            None => None,
+        };
+        let url = github.as_ref().map_or_else(
+            || core_url(base, core),
+            |(a, _)| a.browser_download_url.clone(),
+        );
         let resp = http
             .get(&url)
             .send()
@@ -695,7 +774,16 @@ impl Cores {
             .unwrap_or("nightly")
             .to_string();
         let zip_bytes = resp.bytes().await.map_err(|e| e.to_string())?;
-        if released(core).is_some() {
+        if let Some((asset, tag)) = &github {
+            let digest = asset
+                .digest
+                .as_deref()
+                .and_then(|d| d.strip_prefix("sha256:"));
+            if !digest.is_some_and(|d| d.eq_ignore_ascii_case(&sha256_hex(&zip_bytes))) {
+                return Err(tr::tr!("The core download did not match its checksum"));
+            }
+            version = tag.clone();
+        } else if released(core).is_some() {
             version = published_checksum(http, &url).await?;
             if !version.eq_ignore_ascii_case(&sha256_hex(&zip_bytes)) {
                 return Err(tr::tr!("The core download did not match its checksum"));
@@ -1112,5 +1200,81 @@ mod tests {
         }
         let amiga = with_platform_options("amiga", default_options("puae"));
         assert_eq!(amiga, default_options("puae"));
+    }
+}
+
+#[cfg(test)]
+mod azahar_tests {
+    use super::*;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn core_zip(file: &str) -> Vec<u8> {
+        let mut out = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = zip::ZipWriter::new(&mut out);
+            zip.start_file(file, zip::write::SimpleFileOptions::default())
+                .unwrap();
+            std::io::Write::write_all(&mut zip, b"core").unwrap();
+            zip.finish().unwrap();
+        }
+        out.into_inner()
+    }
+
+    async fn github(tag: &str, zip: &[u8], digest: &str) -> MockServer {
+        let server = MockServer::start().await;
+        let name = format!("{AZAHAR_ASSET}{tag}.zip");
+        let release = serde_json::json!({
+            "tag_name": tag,
+            "assets": [
+                { "name": "azahar-libretro-android-arm64-v8a.zip", "browser_download_url": "x", "digest": null },
+                { "name": name, "browser_download_url": format!("{}/dl/{name}", server.uri()), "digest": digest },
+            ],
+        });
+        Mock::given(method("GET"))
+            .and(path("/latest"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(release))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(format!("/dl/{name}")))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(zip.to_vec()))
+            .mount(&server)
+            .await;
+        server
+    }
+
+    #[test]
+    fn the_3ds_plays_with_azahar_drawn_through_vulkan_on_two_screens() {
+        assert_eq!(core_for_platform("3ds"), Some(&AZAHAR));
+        assert_eq!(core_for_platform("new-nintendo-3ds"), Some(&AZAHAR));
+        assert_eq!(download_base(&AZAHAR), AZAHAR_RELEASES);
+        let options = default_options("azahar");
+        assert!(options.contains(&("citra_layout_option".into(), "default".into())));
+    }
+
+    #[tokio::test]
+    async fn azahar_installs_from_github_when_it_matches_the_digest_and_updates_by_tag() {
+        let file = lib_file(&AZAHAR);
+        let zip = core_zip(&file);
+        let good = format!("sha256:{}", sha256_hex(&zip));
+        let http = reqwest::Client::new();
+        let dir = tempfile::tempdir().unwrap();
+        let cores = Cores::new(dir.path().to_path_buf());
+
+        let tampered = github("2126.2", &zip, "sha256:00").await;
+        let base = format!("{}/latest", tampered.uri());
+        assert!(cores.install(&http, &base, &AZAHAR).await.is_err());
+
+        let server = github("2126.2", &zip, &good).await;
+        let base = format!("{}/latest", server.uri());
+        let path = cores.install(&http, &base, &AZAHAR).await.unwrap();
+        assert_eq!(path, dir.path().join("azahar").join(&file));
+        assert_eq!(cores.installed(&AZAHAR), Some(path));
+        assert!(!cores.update_available(&http, &base, &AZAHAR).await);
+
+        let newer = github("2127.0", &zip, &good).await;
+        let base = format!("{}/latest", newer.uri());
+        assert!(cores.update_available(&http, &base, &AZAHAR).await);
     }
 }

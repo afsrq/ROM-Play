@@ -1495,7 +1495,7 @@ impl Controller {
                 })
                 .unwrap_or_default(),
             split_screens: core_for_platform(&detail.platform_slug)
-                .is_some_and(|core| core.id == "melondsds"),
+                .is_some_and(|core| matches!(core.id, "melondsds" | "azahar")),
             gamepads: self.gamepads.clone(),
             players: self.players.clone(),
             prefs,
