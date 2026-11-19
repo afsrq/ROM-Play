@@ -15,6 +15,7 @@ use crate::ryujinx;
 use crate::saves::{self, SramOutcome};
 use crate::shadps4;
 use crate::store::GameDetail;
+use crate::vita3k;
 use crate::xemu::{self, Xemu};
 use crate::{GameCard, Shot};
 use slint::{Image, Model, ModelRc, SharedString, VecModel};
@@ -62,6 +63,7 @@ pub(super) fn playable(platform_slug: &str) -> bool {
         || (platform_slug == rpcs3::PLATFORM && rpcs3::available())
         || (shadps4::is_platform(platform_slug) && shadps4::available())
         || (platform_slug == ryujinx::PLATFORM && ryujinx::available())
+        || (platform_slug == vita3k::PLATFORM && vita3k::available())
 }
 
 /// What started a download: the game page's button, or a game sent from RomM.
@@ -540,6 +542,8 @@ impl Controller {
                     Some(shadps4::unpack_game)
                 } else if detail.platform_slug == ryujinx::PLATFORM && ryujinx::is_archive(path) {
                     Some(ryujinx::unpack_game)
+                } else if detail.platform_slug == vita3k::PLATFORM && vita3k::is_archive(path) {
+                    Some(vita3k::unpack_game)
                 } else {
                     None
                 };
@@ -690,6 +694,9 @@ impl Controller {
         }
         if detail.platform_slug == ryujinx::PLATFORM {
             return self.play_with_ryujinx(detail, rom);
+        }
+        if detail.platform_slug == vita3k::PLATFORM {
+            return self.play_with_vita3k(detail, rom);
         }
         let Some(core) = core_for_platform(&detail.platform_slug) else {
             return;
@@ -1146,6 +1153,120 @@ impl Controller {
             Err(e) => self.game_status(
                 detail.id,
                 tr!("Could not start {name}: {e}", name = "Ryubing", e),
+            ),
+        }
+    }
+
+    /// PS Vita games: installs or updates Vita3K, and the first time, installs the Vita system
+    /// software from RomM's PS Vita firmware into Vita3K's storage.
+    fn play_with_vita3k(&self, detail: GameDetail, rom: PathBuf) {
+        self.set_preparing(true);
+        self.game_status(detail.id, tr!("Getting ready…"));
+        let http = self.shared.http.clone();
+        let client = self.client.borrow().clone();
+        let offline = self.offline.get();
+        self.shared.rt.spawn(async move {
+            let id = detail.id;
+            let emulator = vita3k::emulator(paths::cores_dir().join("vita3k"));
+            let exe = emulator
+                .ensure(
+                    &http,
+                    vita3k::RELEASES,
+                    offline,
+                    installing_status(id, "Vita3K"),
+                )
+                .await
+                .map(Ready::exe);
+            let home = vita3k::Home(paths::data_dir().join("vita3k"));
+            let system = paths::system_dir();
+            let mut missing = if home.firmware_installed() {
+                Vec::new()
+            } else {
+                bios::missing(&detail.platform_slug, &system)
+            };
+            if !missing.is_empty() && !offline {
+                if let Some(client) = &client {
+                    if let Ok(still) = bios::ensure(
+                        client,
+                        detail.platform_id,
+                        &detail.platform_slug,
+                        &system,
+                        &AtomicBool::new(false),
+                    )
+                    .await
+                    {
+                        missing = still;
+                    }
+                }
+            }
+            let pups = vita3k::find_firmware(&bios::vita_dir(&system));
+            let ready = match exe {
+                Ok(exe) if !home.firmware_installed() && !pups.is_empty() => {
+                    on_ui(move |c| {
+                        c.game_status(id, tr!("Installing the PS Vita system software…"));
+                    });
+                    tokio::task::spawn_blocking(move || {
+                        home.install_firmware(&exe, &pups).map(|()| exe)
+                    })
+                    .await
+                    .unwrap_or_else(|e| Err(e.to_string()))
+                }
+                exe => exe,
+            };
+            on_ui(move |c| c.launch_vita3k(detail, rom, ready, missing));
+        });
+    }
+
+    fn launch_vita3k(
+        &self,
+        detail: GameDetail,
+        rom: PathBuf,
+        ready: Result<PathBuf, String>,
+        missing: Vec<String>,
+    ) {
+        self.set_preparing(false);
+        let exe = match ready {
+            Ok(exe) => exe,
+            Err(e) => return self.game_status(detail.id, e),
+        };
+        let home = vita3k::Home(paths::data_dir().join("vita3k"));
+        if !missing.is_empty() && !home.firmware_installed() {
+            return self.game_status(detail.id, bios::missing_message(&missing));
+        }
+        let content = match vita3k::content_path(&rom) {
+            Ok(content) => content,
+            Err(e) => return self.game_status(detail.id, e),
+        };
+        // A game already in the Vita's storage starts from there; otherwise Vita3K installs it
+        // from the download, then starts it.
+        let title_id = vita3k::title_id(&content).filter(|id| home.has_game(id));
+        let start = match &title_id {
+            Some(id) => vita3k::Start::Installed(id),
+            None => vita3k::Start::Install(&content),
+        };
+        let fullscreen = self.prefs.get().fullscreen;
+        let id = detail.id;
+        let on_exit = move |code: Option<i32>, log: Vec<String>| {
+            let _ = slint::invoke_from_event_loop(move || {
+                with_controller(|c| c.external_closed(id, "Vita3K", code, log));
+            });
+        };
+        match vita3k::launch(&exe, &home, &start, fullscreen, on_exit) {
+            Ok(running) => {
+                *self.running.borrow_mut() = Some(play::RunningGame::External(running));
+                self.refresh_play_button();
+                let status = if title_id.is_none() {
+                    tr!("Vita3K is installing the game, then it starts.")
+                } else {
+                    String::new()
+                };
+                self.game_status(id, status);
+                self.record_play(id);
+                *self.playing.borrow_mut() = Some(detail);
+            }
+            Err(e) => self.game_status(
+                detail.id,
+                tr!("Could not start {name}: {e}", name = "Vita3K", e),
             ),
         }
     }

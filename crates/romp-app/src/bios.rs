@@ -8,6 +8,7 @@ const DC_FILES: [&str; 4] = ["dc_boot.bin", "dc_flash.bin", "naomi.zip", "awbios
 const XEMU_DIR: &str = "xemu";
 const RPCS3_DIR: &str = "rpcs3";
 const RYUJINX_DIR: &str = "ryujinx";
+const VITA3K_DIR: &str = "vita3k";
 const PCSX2_BIOS_DIR: &str = "pcsx2/bios";
 const PS2_BIOS_SIZE: std::ops::RangeInclusive<u64> = 4 << 20..=8 << 20;
 pub const ARCADE: [&str; 6] = ["arcade", "neogeoaes", "neogeomvs", "cps1", "cps2", "cps3"];
@@ -80,6 +81,8 @@ pub fn placement(platform_slug: &str, file_name: &str) -> PathBuf {
         Path::new(RPCS3_DIR).join(file_name)
     } else if platform_slug == crate::ryujinx::PLATFORM {
         Path::new(RYUJINX_DIR).join(file_name)
+    } else if platform_slug == crate::vita3k::PLATFORM {
+        Path::new(VITA3K_DIR).join(file_name)
     } else if uses_pcsx2(platform_slug) {
         Path::new(PCSX2_BIOS_DIR).join(file_name)
     } else if platform_slug == "philips-cd-i" {
@@ -151,7 +154,19 @@ pub fn switch_dir(system_dir: &Path) -> PathBuf {
     system_dir.join(RYUJINX_DIR)
 }
 
+/// The PS Vita system software from RomM's PS Vita firmware.
+pub fn vita_dir(system_dir: &Path) -> PathBuf {
+    system_dir.join(VITA3K_DIR)
+}
+
 pub fn missing(platform_slug: &str, system_dir: &Path) -> Vec<String> {
+    if platform_slug == crate::vita3k::PLATFORM {
+        return if crate::vita3k::find_firmware(&vita_dir(system_dir)).is_empty() {
+            vec![crate::vita3k::FIRMWARE.to_string()]
+        } else {
+            Vec::new()
+        };
+    }
     if platform_slug == crate::ryujinx::PLATFORM {
         return if crate::ryujinx::has_keys(&switch_dir(system_dir)) {
             Vec::new()

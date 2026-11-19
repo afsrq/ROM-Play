@@ -60,6 +60,7 @@ mod store;
 mod sync;
 mod updates;
 mod versions;
+mod vita3k;
 mod vulkan;
 mod whats_new;
 mod xemu;

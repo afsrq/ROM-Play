@@ -112,7 +112,7 @@ impl Emulator {
         };
         let current = self.installed_version();
         if let (Some(exe), Some(version)) = (&installed, &current) {
-            if *version == release.tag_name {
+            if *version == self.build_version(&release) {
                 return Ok(Ready::Current(exe.clone()));
             }
         }
@@ -162,6 +162,20 @@ impl Emulator {
         }
     }
 
+    /// What a release's build is known by: its tag, or for a project that replaces the files of
+    /// one rolling release with each build, the tag and the start of the download's checksum.
+    fn build_version(&self, release: &Release) -> String {
+        if !ROLLING_TAGS.contains(&release.tag_name.as_str()) {
+            return release.tag_name.clone();
+        }
+        let build = (self.pick)(&release.assets)
+            .and_then(|a| a.digest.as_deref())
+            .and_then(|d| d.strip_prefix("sha256:"))
+            .and_then(|hex| hex.get(..12))
+            .unwrap_or_default();
+        format!("{}-{build}", release.tag_name)
+    }
+
     async fn install_release(
         &self,
         http: &reqwest::Client,
@@ -169,7 +183,8 @@ impl Emulator {
     ) -> Result<PathBuf, String> {
         let name = self.name;
         let unreachable = |_| tr::tr!("Could not reach GitHub to download {name}", name);
-        if !is_plain_name(&release.tag_name) {
+        let version = self.build_version(&release);
+        if !is_plain_name(&version) {
             return Err(format!("{name} has an unusual release name"));
         }
         let asset = (self.pick)(&release.assets)
@@ -190,7 +205,7 @@ impl Emulator {
                 name
             ));
         }
-        let version_dir = self.dir.join(&release.tag_name);
+        let version_dir = self.dir.join(&version);
         let file = asset.name.clone();
         let dir = version_dir.clone();
         let finish = self.finish;
@@ -208,7 +223,7 @@ impl Emulator {
             ));
         }
         let manifest = Manifest {
-            version: release.tag_name.clone(),
+            version,
             exe: exe
                 .strip_prefix(&self.dir)
                 .map_err(|e| e.to_string())?
@@ -316,6 +331,9 @@ impl Pinned {
     }
 }
 
+/// Tags whose release is rebuilt in place, its downloads replaced by each new build.
+const ROLLING_TAGS: [&str; 1] = ["continuous"];
+
 /// A release tag becomes a folder name, so it must be one plain name that stays inside the folder.
 fn is_plain_name(tag: &str) -> bool {
     let mut parts = Path::new(tag).components();
@@ -352,6 +370,8 @@ fn unpack(bytes: &[u8], dir: &Path, name: &str) -> Result<(), String> {
             .map_err(|e| e.to_string())
     } else if name.ends_with(".7z") {
         unpack_7z(bytes, dir, name)
+    } else if name.ends_with(".dmg") && cfg!(target_os = "macos") {
+        unpack_dmg(bytes, dir, name)
     } else {
         let exe = dir.join(name);
         std::fs::write(&exe, bytes).map_err(|e| e.to_string())?;
@@ -380,6 +400,60 @@ fn unpack_with(
         s if s.success() => Ok(()),
         s => Err(format!("unpacking failed ({s})")),
     }
+}
+
+/// Copies the apps out of a disk image: it's opened read-only and out of sight, then closed.
+fn unpack_dmg(bytes: &[u8], dir: &Path, name: &str) -> Result<(), String> {
+    let image = dir.join(name);
+    std::fs::write(&image, bytes).map_err(|e| e.to_string())?;
+    let mount = dir.join(".mount");
+    let attached = std::process::Command::new("/usr/bin/hdiutil")
+        .args(["attach", "-nobrowse", "-readonly", "-noautoopen", "-quiet"])
+        .arg("-mountpoint")
+        .arg(&mount)
+        .arg(&image)
+        .status()
+        .map_err(|e| e.to_string());
+    let copied = match attached {
+        Ok(s) if s.success() => {
+            let copied = copy_apps(&mount, dir);
+            let _ = std::process::Command::new("/usr/bin/hdiutil")
+                .args(["detach", "-quiet", "-force"])
+                .arg(&mount)
+                .status();
+            copied
+        }
+        Ok(s) => Err(format!("opening the disk image failed ({s})")),
+        Err(e) => Err(e),
+    };
+    let _ = std::fs::remove_dir(&mount);
+    let _ = std::fs::remove_file(&image);
+    copied
+}
+
+fn copy_apps(from: &Path, to: &Path) -> Result<(), String> {
+    let apps: Vec<PathBuf> = std::fs::read_dir(from)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "app") && !p.is_symlink() && p.is_dir())
+        .collect();
+    if apps.is_empty() {
+        return Err("the disk image has no app in it".into());
+    }
+    for app in apps {
+        let target = to.join(app.file_name().expect("an app's name"));
+        // ditto keeps the app's links, permissions and signature intact.
+        let status = std::process::Command::new("/usr/bin/ditto")
+            .arg(&app)
+            .arg(&target)
+            .status()
+            .map_err(|e| e.to_string())?;
+        if !status.success() {
+            return Err(format!("copying the app failed ({status})"));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]
@@ -698,6 +772,58 @@ mod tests {
             ensure(&emulator(dir.path()), &server, false).await,
             Ok(Ready::Installed(dir.path().join("n2/emu")))
         );
+    }
+
+    #[tokio::test]
+    async fn a_rolling_release_updates_when_its_download_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let emu = emulator(dir.path());
+        let build = |bytes: &[u8]| {
+            let hex = crate::cores::sha256_hex(bytes);
+            dir.path().join(format!("continuous-{}/emu", &hex[..12]))
+        };
+        let first = github("continuous", b"one").await;
+        assert_eq!(
+            ensure(&emu, &first, false).await,
+            Ok(Ready::Installed(build(b"one")))
+        );
+        assert_eq!(
+            ensure(&emu, &first, false).await,
+            Ok(Ready::Current(build(b"one"))),
+            "the same build isn't downloaded again"
+        );
+        let second = github("continuous", b"two").await;
+        assert_eq!(
+            ensure(&emu, &second, false).await,
+            Ok(Ready::Installed(build(b"two")))
+        );
+        assert!(!build(b"one").exists(), "the old build is removed");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn disk_images_give_up_their_apps() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        std::fs::create_dir_all(src.join("Emu.app/Contents/MacOS")).unwrap();
+        std::fs::write(src.join("Emu.app/Contents/MacOS/Emu"), b"emu").unwrap();
+        std::os::unix::fs::symlink("/Applications", src.join("Applications")).unwrap();
+        let image = dir.path().join("emu.dmg");
+        let made = std::process::Command::new("/usr/bin/hdiutil")
+            .args(["create", "-quiet", "-format", "UDZO", "-srcfolder"])
+            .arg(&src)
+            .arg(&image)
+            .status()
+            .unwrap();
+        assert!(made.success());
+        let out = dir.path().join("out");
+        unpack(&std::fs::read(&image).unwrap(), &out, "emu.dmg").unwrap();
+        assert_eq!(
+            std::fs::read(out.join("Emu.app/Contents/MacOS/Emu")).unwrap(),
+            b"emu"
+        );
+        assert!(!out.join("Applications").exists(), "only the app is copied");
+        assert!(!out.join("emu.dmg").exists() && !out.join(".mount").exists());
     }
 
     #[tokio::test]

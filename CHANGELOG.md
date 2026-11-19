@@ -4,6 +4,12 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-19
+
+### Added
+
+- PS Vita games play with Vita3K, started as its own program in a plain window that closes with the game. ROM Play downloads Vita3K from its own releases, checks it against the checksum GitHub publishes, and updates it when a new build comes out. Its settings and the Vita's storage stay in ROM Play's own folder, apart from any Vita3K you installed yourself. The first time, ROM Play installs the Vita system software (PSVUPDAT.PUP, and the font package if it's there) from RomM's PS Vita firmware. Games play from a .vpk, a .zip, a game folder, or a 7z of one: the first play installs the game into Vita3K, and later ones start it from there.
+
 ## [0.27.0] - 2026-11-18
 
 ### Added
@@ -402,7 +408,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.27.0...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.28.0...HEAD
+[0.28.0]: https://github.com/afsrq/ROM-Play/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/afsrq/ROM-Play/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/afsrq/ROM-Play/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/afsrq/ROM-Play/compare/v0.24.0...v0.25.0

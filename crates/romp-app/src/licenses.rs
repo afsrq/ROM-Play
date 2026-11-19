@@ -46,6 +46,11 @@ const RYUBING: Notice = notice(
     "MIT",
     "https://git.ryujinx.app/projects/Ryubing/src/branch/master/LICENSE.txt",
 );
+const VITA3K: Notice = notice(
+    "Vita3K",
+    "GPL-2.0 or later",
+    "https://github.com/Vita3K/Vita3K/blob/master/COPYING.txt",
+);
 const RCHEEVOS: Notice = notice(
     "rcheevos",
     "MIT",
@@ -370,6 +375,9 @@ pub fn notices() -> Vec<Notice> {
     }
     if crate::ryujinx::available() {
         notices.push(RYUBING);
+    }
+    if crate::vita3k::available() {
+        notices.push(VITA3K);
     }
     if cfg!(target_os = "macos") {
         notices.push(MOLTENVK);
