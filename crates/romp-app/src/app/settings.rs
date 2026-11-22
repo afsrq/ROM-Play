@@ -92,6 +92,7 @@ impl Controller {
         ui.set_pref_pause_unfocused(prefs.pause_unfocused);
         ui.set_pref_resume(prefs.resume);
         ui.set_pref_fullscreen(prefs.fullscreen);
+        ui.set_pref_tv_mode(prefs.tv_mode);
         ui.set_pref_check_updates(prefs.check_updates);
         ui.set_pref_accept_installs(prefs.accept_installs);
         ui.set_pref_volume(f32::from(prefs.volume));
@@ -153,6 +154,7 @@ impl Controller {
             accept_installs: ui.get_pref_accept_installs(),
             appearance: u8::try_from(ui.get_pref_appearance()).unwrap_or(0),
             whats_new: self.prefs.get().whats_new,
+            tv_mode: ui.get_pref_tv_mode(),
         };
         let before = self.prefs.get();
         if prefs == before {

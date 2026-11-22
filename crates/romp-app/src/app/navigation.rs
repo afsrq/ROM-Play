@@ -2,7 +2,7 @@ use super::{with_controller, Controller, SCREEN_GAME, SCREEN_LIBRARY, SCREEN_SET
 use crate::gamepads::Button;
 use crate::gettext_noop;
 use crate::i18n::translate;
-use crate::input::{A, B, DOWN, L, LEFT, R, RIGHT, START, UP, X, Y};
+use crate::input::{A, B, DOWN, L, LEFT, R, RIGHT, SELECT, START, UP, X, Y};
 use crate::mapping::BUTTONS;
 use crate::navigation::{move_in_grid, Dir};
 use crate::pad_labels::{badge, Badge, Family};
@@ -51,9 +51,18 @@ impl Controller {
 
     fn update_pad_hints(&self, family: Option<Family>) {
         let Some(ui) = self.ui() else { return };
+        let view = View {
+            screen: ui.get_screen(),
+            menu: shoulder_menu(&ui),
+            tv: self.tv(),
+            tv_menu: ui.get_tv_menu_open(),
+            conflict: ui.get_save_conflict(),
+        };
         let hints = match family {
             Some(family) if !ui.get_dialog_open() && !ui.get_remap_open() => {
-                hints(ui.get_screen(), family, shoulder_menu(&ui))
+                ui.set_tv_confirm_key(pad_key(badge(family, family.confirm())));
+                ui.set_tv_other_key(pad_key(badge(family, Button::North)));
+                hints(&view, family)
             }
             _ => Vec::new(),
         };
@@ -86,7 +95,7 @@ impl Controller {
         }
     }
 
-    fn nav_button(&self, button: u32) {
+    pub(super) fn nav_button(&self, button: u32) {
         let button = crate::mapping::as_seen(button, crate::i18n::rtl());
         let Some(ui) = self.ui() else { return };
         if ui.get_dialog_open() {
@@ -101,7 +110,26 @@ impl Controller {
             }
             return;
         }
-        match (ui.get_screen(), button) {
+        let screen = ui.get_screen();
+        if self.tv() {
+            if self.tv_menu_button(button) {
+                return;
+            }
+            let conflict = ui.get_save_conflict();
+            match (screen, button) {
+                (SCREEN_LIBRARY | SCREEN_GAME, SELECT) => return self.leave_tv(),
+                (SCREEN_LIBRARY | SCREEN_GAME, START) => return self.open_tv_menu(),
+                (SCREEN_LIBRARY, L | R) => {
+                    return self.step_tv_tab(tab_step(button, crate::i18n::rtl()));
+                }
+                (SCREEN_GAME, A) if conflict => return self.keep_save(crate::saves::Keep::Local),
+                (SCREEN_GAME, X) if conflict => return self.keep_save(crate::saves::Keep::Server),
+                _ => {}
+            }
+        } else if button == SELECT && matches!(screen, SCREEN_LIBRARY | SCREEN_GAME) {
+            return self.enter_tv();
+        }
+        match (screen, button) {
             (SCREEN_LIBRARY, UP) => self.move_card(Dir::Up),
             (SCREEN_LIBRARY, DOWN) => self.move_card(Dir::Down),
             (SCREEN_LIBRARY, LEFT) => self.move_card(Dir::Left),
@@ -181,6 +209,13 @@ impl Controller {
                 self.set_card_focused(id, focused);
             }
         }
+        if let Some((ui, (_, column))) = self
+            .ui()
+            .zip(index.and_then(|i| self.library.borrow().games.get(i).map(|g| g.id)))
+            .and_then(|(ui, id)| Some((ui, self.position_of(id)?)))
+        {
+            ui.set_grid_focus_col(column as i32);
+        }
         if let (Some(ui), Some(i)) = (self.ui(), index) {
             let lib = self.library.borrow();
             let row = i / lib.columns.max(1);
@@ -253,19 +288,57 @@ fn version_step(button: u32, index: i32, count: usize) -> Option<usize> {
 /// The buttons in a hint and what pressing them does.
 pub(super) type Hint = (Vec<Badge>, &'static str);
 
-fn hints(screen: i32, family: Family, menu: Option<Menu>) -> Vec<Hint> {
+/// What's on screen, which says which buttons do something.
+struct View {
+    screen: i32,
+    menu: Option<Menu>,
+    tv: bool,
+    tv_menu: bool,
+    conflict: bool,
+}
+
+fn hints(view: &View, family: Family) -> Vec<Hint> {
     let key = |button: Button| badge(family, button);
     let shoulders = vec![key(Button::LeftTrigger), key(Button::RightTrigger)];
-    match screen {
-        SCREEN_LIBRARY => vec![
+    let dpad = || vec![Badge::Text(gettext_noop!("D-pad"))];
+    let menu = view.menu;
+    if view.tv && view.tv_menu {
+        return vec![
+            (dpad(), gettext_noop!("Move")),
+            (vec![key(family.confirm())], gettext_noop!("Choose")),
+            (vec![key(family.back())], gettext_noop!("Close")),
+        ];
+    }
+    if view.tv && view.screen == SCREEN_LIBRARY {
+        return vec![
+            (dpad(), gettext_noop!("Move")),
+            (vec![key(family.confirm())], gettext_noop!("Open")),
+            (shoulders, gettext_noop!("Change list")),
+            (vec![key(Button::West)], gettext_noop!("Surprise me")),
+            (vec![key(Button::Start)], gettext_noop!("Menu")),
+        ];
+    }
+    if view.tv && view.screen == SCREEN_GAME && view.conflict {
+        return vec![
             (
-                vec![Badge::Text(gettext_noop!("D-pad"))],
-                gettext_noop!("Move"),
+                vec![key(family.confirm())],
+                gettext_noop!("Use this computer's save"),
             ),
+            (
+                vec![key(Button::North)],
+                gettext_noop!("Use the server's save"),
+            ),
+            (vec![key(family.back())], gettext_noop!("Back")),
+        ];
+    }
+    match view.screen {
+        SCREEN_LIBRARY => vec![
+            (dpad(), gettext_noop!("Move")),
             (vec![key(family.confirm())], gettext_noop!("Open")),
             (shoulders, gettext_noop!("Change list")),
             (vec![key(Button::West)], gettext_noop!("Surprise me")),
             (vec![key(Button::Start)], gettext_noop!("Settings")),
+            (vec![key(Button::Select)], gettext_noop!("TV mode")),
         ],
         SCREEN_GAME => [
             Some((
@@ -278,6 +351,8 @@ fn hints(screen: i32, family: Family, menu: Option<Menu>) -> Vec<Hint> {
                 Menu::Files => (shoulders.clone(), gettext_noop!("Change file")),
             }),
             Some((vec![key(family.back())], gettext_noop!("Back"))),
+            view.tv
+                .then(|| (vec![key(Button::Start)], gettext_noop!("Menu"))),
         ]
         .into_iter()
         .flatten()
@@ -310,30 +385,61 @@ mod tests {
 
     #[test]
     fn hints_name_the_buttons_of_the_controller_in_use() {
-        let library = hints(SCREEN_LIBRARY, Family::Xbox, None);
+        let view = |screen, menu| View {
+            screen,
+            menu,
+            tv: false,
+            tv_menu: false,
+            conflict: false,
+        };
+        let library = hints(&view(SCREEN_LIBRARY, None), Family::Xbox);
         assert_eq!(library[1], (vec![Badge::Text("A")], "Open"));
         assert_eq!(
             library[2],
             (vec![Badge::Text("LB"), Badge::Text("RB")], "Change list")
         );
         assert_eq!(library[3], (vec![Badge::Text("X")], "Surprise me"));
-        let game = hints(SCREEN_GAME, Family::Ps5, None);
+        let game = hints(&view(SCREEN_GAME, None), Family::Ps5);
         assert_eq!(
             game[0],
             (vec![Badge::Shape(Shape::Cross)], "Play or download")
         );
         assert_eq!(game[2], (vec![Badge::Shape(Shape::Circle)], "Back"));
         assert_eq!(game.len(), 3);
-        let versioned = hints(SCREEN_GAME, Family::Xbox, Some(Menu::Versions));
+        let versioned = hints(&view(SCREEN_GAME, Some(Menu::Versions)), Family::Xbox);
         assert_eq!(
             versioned[2],
             (vec![Badge::Text("LB"), Badge::Text("RB")], "Change version")
         );
         assert_eq!(versioned[3], (vec![Badge::Text("B")], "Back"));
-        let files = hints(SCREEN_GAME, Family::Xbox, Some(Menu::Files));
+        let files = hints(&view(SCREEN_GAME, Some(Menu::Files)), Family::Xbox);
         assert_eq!(files[2].1, "Change file");
-        let settings = hints(SCREEN_SETTINGS, Family::Nintendo, None);
+        let settings = hints(&view(SCREEN_SETTINGS, None), Family::Nintendo);
         assert_eq!(settings[1], (vec![Badge::Text("B")], "Back"));
+    }
+
+    #[test]
+    fn tv_mode_hints_name_its_own_buttons() {
+        let tv = |screen, tv_menu, conflict| View {
+            screen,
+            menu: None,
+            tv: true,
+            tv_menu,
+            conflict,
+        };
+        let library = hints(&tv(SCREEN_LIBRARY, false, false), Family::Xbox);
+        assert_eq!(library[4], (vec![Badge::Text("Menu")], "Menu"));
+        let menu = hints(&tv(SCREEN_LIBRARY, true, false), Family::Xbox);
+        assert_eq!(menu[1], (vec![Badge::Text("A")], "Choose"));
+        assert_eq!(menu.len(), 3);
+        let game = hints(&tv(SCREEN_GAME, false, false), Family::Xbox);
+        assert_eq!(game.last().unwrap().1, "Menu");
+        let conflict = hints(&tv(SCREEN_GAME, false, true), Family::Xbox);
+        assert_eq!(conflict[0].1, "Use this computer's save");
+        assert_eq!(
+            conflict[1],
+            (vec![Badge::Text("Y")], "Use the server's save")
+        );
     }
 
     #[test]

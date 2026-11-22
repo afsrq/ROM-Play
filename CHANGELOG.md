@@ -4,6 +4,12 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-22
+
+### Added
+
+- TV mode: ROM Play goes full screen, laid out for a TV across the room and a controller. Your consoles and collections run along the top, switched with LB and RB; the chosen game's name sits above big box art, with its cover faint behind everything; and its page has big Play, Download and Favorite buttons. Games start full screen. The View or Select button switches in and out, as do the TV button in the sidebar and Library → TV Mode (Control-Shift-T). Start opens a menu to leave TV mode, open Settings or quit. The keyboard works too: the arrows move, Return chooses, Escape goes back, and Space opens the menu. Settings has Open in TV mode, so ROM Play starts there.
+
 ## [0.28.0] - 2026-11-19
 
 ### Added
@@ -408,7 +414,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.29.0...HEAD
+[0.29.0]: https://github.com/afsrq/ROM-Play/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/afsrq/ROM-Play/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/afsrq/ROM-Play/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/afsrq/ROM-Play/compare/v0.25.0...v0.26.0

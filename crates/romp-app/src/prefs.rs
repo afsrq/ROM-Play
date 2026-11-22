@@ -24,6 +24,8 @@ pub struct Preferences {
     pub appearance: u8,
     /// Whether a new version shows what's new in it the first time it runs.
     pub whats_new: bool,
+    /// Whether ROM Play opens in TV mode.
+    pub tv_mode: bool,
 }
 
 impl Default for Preferences {
@@ -41,6 +43,7 @@ impl Default for Preferences {
             accept_installs: true,
             appearance: 0,
             whats_new: true,
+            tv_mode: false,
         }
     }
 }

@@ -12,6 +12,7 @@ mod screenshots;
 mod settings;
 mod slots;
 mod surprise;
+mod tv;
 mod updates;
 mod whats_new;
 
@@ -163,6 +164,12 @@ struct Controller {
     update_staging: Cell<bool>,
     /// The Add a game dialog, while it's open.
     add_game: RefCell<Option<local_games::AddGame>>,
+    /// TV mode, whether the window was full screen before it, and its clock's timer.
+    tv: Cell<bool>,
+    tv_was_fullscreen: Cell<bool>,
+    tv_clock: RefCell<Option<Timer>>,
+    /// The keys of TV mode's lists, in the order they run along the top.
+    tv_tab_keys: RefCell<Vec<String>>,
 }
 
 thread_local! {
@@ -289,6 +296,10 @@ pub fn run() -> anyhow::Result<()> {
         update_dismissed: Cell::new(false),
         update_staging: Cell::new(false),
         add_game: RefCell::new(None),
+        tv: Cell::new(false),
+        tv_was_fullscreen: Cell::new(false),
+        tv_clock: RefCell::new(None),
+        tv_tab_keys: RefCell::default(),
     });
     ui.set_rows(ModelRc::from(controller.library.borrow().rows.clone()));
     CONTROLLER.with(|c| *c.borrow_mut() = Some(controller.clone()));
@@ -450,6 +461,10 @@ impl Controller {
         ui.on_play_game(|| with_controller(|c| c.play_game()));
         ui.on_delete_game(|| with_controller(|c| c.delete_game()));
         ui.on_add_local_game(|| with_controller(|c| c.add_local_game()));
+        ui.on_open_tv(|| with_controller(|c| c.toggle_tv()));
+        ui.on_tv_key(|key| with_controller(|c| c.tv_key(&key)));
+        ui.on_tv_menu_chosen(|index| with_controller(|c| c.tv_menu_chosen(index)));
+        ui.on_tv_menu_close(|| with_controller(|c| c.close_tv_menu()));
         ui.on_add_game_console_chosen(|i| with_controller(|c| c.add_game_console_chosen(i)));
         ui.on_add_game_confirmed(|| with_controller(|c| c.add_game_confirmed()));
         ui.on_add_game_cancelled(|| with_controller(|c| c.add_game_cancelled()));
@@ -695,6 +710,12 @@ impl Controller {
         }
         if let Some(id) = restore.and_then(|v| v.game) {
             self.open_game(id);
+        }
+        if self.prefs.get().tv_mode {
+            // Once the window is open, which full screen needs.
+            Timer::single_shot(Duration::from_millis(300), || {
+                with_controller(|c| c.enter_tv());
+            });
         }
         self.show_whats_new_if_due();
         self.sync();
@@ -1055,6 +1076,11 @@ impl Controller {
             .collect();
         lib.shelves = rows.iter().map(|r| r.shelf).collect();
         lib.rows.set_vec(rows);
+        drop(lib);
+        // TV mode always has a game chosen, so the top of the screen names one.
+        if self.tv() && total > 0 && focus.is_none_or(|i| i >= total) {
+            self.focus_card(Some(0));
+        }
     }
 
     fn row_shown(&self, row: usize) {

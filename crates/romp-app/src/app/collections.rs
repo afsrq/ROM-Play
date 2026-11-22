@@ -299,6 +299,12 @@ impl Controller {
             keys.push(FOR_YOU_KEY.to_string());
         }
 
+        // TV mode's row of lists has every one, whatever the sidebar has folded away.
+        let mut tabs: Vec<SidebarEntry> = entries
+            .iter()
+            .filter(|e| !e.header && e.key != PAIR_KEY)
+            .cloned()
+            .collect();
         let filter = self.platform_filter.borrow().clone();
         let filtering = !filter.trim().is_empty();
         // A filter shows its matches even in a collapsed section. Every console keeps its key,
@@ -309,6 +315,7 @@ impl Controller {
         for p in &platforms {
             let key = format!("p:{}", p.id);
             keys.push(key.clone());
+            tabs.push(item(&key, &p.name, p.count, ""));
             names.push((key, p.name.clone()));
         }
         let shown = if open {
@@ -354,6 +361,7 @@ impl Controller {
             entries.push(header("collections", &tr!("Collections"), open, can_edit));
             for c in listed {
                 keys.push(c.key.clone());
+                tabs.push(item(&c.key, &c.name, c.count, ""));
                 names.push((c.key.clone(), c.name.clone()));
                 if !open {
                     continue;
@@ -389,6 +397,7 @@ impl Controller {
             }
         }
         ui.set_sidebar(ModelRc::new(VecModel::from(entries)));
+        self.set_tv_tabs(tabs);
         *self.sidebar_names.borrow_mut() = names;
         self.update_heading();
         self.fetch_icons(missing_icons);
@@ -423,6 +432,7 @@ impl Controller {
             ui.set_selected_key(key.clone().into());
         }
         *self.selected.borrow_mut() = key;
+        self.show_tv_tab();
         self.reload_games();
     }
 

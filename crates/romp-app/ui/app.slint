@@ -28,21 +28,22 @@ export struct Shot { image: image, loaded: bool }
 /// A controller button in a hint: its printed label, or a PlayStation symbol.
 component PadBadge inherits Rectangle {
     in property <PadKey> key;
-    height: 20px;
-    width: max(20px, badge-text.preferred-width + 10px);
-    border-radius: 10px;
+    in property <length> size: 20px;
+    height: root.size;
+    width: max(root.size, badge-text.preferred-width + root.size / 2);
+    border-radius: root.size / 2;
     border-width: 1px;
     border-color: Theme.border-subtle;
     background: Theme.hover;
     badge-text := Text { horizontal-alignment: Locale.start;
         text: root.key.shape == "" ? root.key.text : "";
-        font-size: Theme.font-caption;
+        font-size: root.size * 0.55;
         font-weight: 600;
         color: Theme.text-secondary;
     }
     if root.key.shape != "": Image {
-        width: 12px;
-        height: 12px;
+        width: root.size * 0.6;
+        height: root.size * 0.6;
         colorize: Theme.text-secondary;
         source: root.key.shape == "cross" ? @image-url("icons/pad-cross.svg")
             : root.key.shape == "circle" ? @image-url("icons/pad-circle.svg")
@@ -813,6 +814,7 @@ component Library inherits Rectangle {
     in property <bool> has-app-icon;
     callback open-about();
     callback add-local-game();
+    callback open-tv();
     in property <bool> page-open;
     public function focus-search() { search-field.focus(); }
     // A narrow window always shows the sidebar as a rail of icons; a wider one as the player left it.
@@ -1102,6 +1104,10 @@ component Library inherits Rectangle {
                     }
                     Row {
                         alignment: center;
+                        IconButton { icon: @image-url("icons/tv.svg"); tooltip: @tr("TV mode"); clicked => { root.open-tv(); } }
+                    }
+                    Row {
+                        alignment: center;
                         IconButton { icon: @image-url("icons/info.svg"); tooltip: @tr("About"); clicked => { root.open-about(); } }
                     }
                     Row {
@@ -1131,6 +1137,7 @@ component Library inherits Rectangle {
                     }
                     if root.notifications-shown: BellButton { unread: root.notifications-unread; clicked => { root.open-notifications(); } }
                     IconButton { icon: @image-url("icons/add.svg"); tooltip: @tr("Add a game from this Mac"); clicked => { root.add-local-game(); } }
+                    IconButton { icon: @image-url("icons/tv.svg"); tooltip: @tr("TV mode"); clicked => { root.open-tv(); } }
                     IconButton { icon: @image-url("icons/info.svg"); tooltip: @tr("About"); clicked => { root.open-about(); } }
                     IconButton { icon: @image-url("icons/settings.svg"); tooltip: @tr("Settings"); clicked => { root.open-settings(); } }
                 }
@@ -2167,6 +2174,7 @@ component SettingsPage inherits FocusScope {
     in-out property <bool> pause-unfocused;
     in-out property <bool> resume;
     in-out property <bool> fullscreen;
+    in-out property <bool> tv-mode;
     in-out property <bool> check-updates;
     in property <string> update-status;
     callback check-updates-now();
@@ -2254,6 +2262,12 @@ component SettingsPage inherits FocusScope {
                                 label: @tr("Start games in full screen");
                                 detail: @tr("Press F11 in a game to switch at any time.");
                                 Switch { checked <=> root.fullscreen; toggled => { root.prefs-changed(); } }
+                            }
+                            SettingRow {
+                                divider: true;
+                                label: @tr("Open in TV mode");
+                                detail: @tr("ROM Play starts full screen, for a TV and a controller. The View or Select button switches at any time.");
+                                Switch { checked <=> root.tv-mode; toggled => { root.prefs-changed(); } }
                             }
                             SettingRow {
                                 divider: true;
@@ -3212,6 +3226,651 @@ component AboutDialog inherits Rectangle {
     }
 }
 
+// TV mode: ROM Play full screen, sized for a TV across the room and played with a controller.
+// Everything is measured in `u`, a 1080th of the screen's height, so it looks the same on any TV.
+
+// A list, such as a console or Favorites, in the row along the top.
+component TvTab inherits Rectangle {
+    in property <SidebarEntry> entry;
+    in property <bool> selected;
+    in property <length> u;
+    callback clicked();
+    height: 56 * root.u;
+    border-radius: self.height / 2;
+    background: root.selected ? Theme.text-strong : touch.has-hover ? Theme.hover : transparent;
+    animate background { duration: 120ms; }
+    accessible-role: tab;
+    accessible-label: root.entry.name;
+    accessible-item-selected: root.selected;
+    accessible-action-default => { root.clicked(); }
+    touch := TouchArea { clicked => { root.clicked(); } }
+    Text {
+        x: 20 * root.u;
+        width: parent.width - 40 * root.u;
+        text: root.entry.name;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+        font-size: 24 * root.u;
+        font-weight: root.selected ? 700 : 500;
+        color: root.selected ? Theme.background : Theme.text-secondary;
+    }
+}
+
+// A game's box, which grows a little when it's the one chosen.
+component TvCard inherits Rectangle {
+    in property <GameCard> game;
+    in property <bool> focused;
+    in property <length> u;
+    callback clicked();
+    accessible-role: button;
+    accessible-label: root.game.title;
+    accessible-description: root.game.platform + (root.game.downloaded ? ", " + @tr("downloaded") : "");
+    accessible-action-default => { root.clicked(); }
+    property <float> aspect: root.game.aspect > 0 ? root.game.aspect : 0.71;
+    property <length> box-height: min(root.height, root.width / root.aspect);
+    property <float> grow: root.focused ? 1.1 : 1;
+    animate grow { duration: 140ms; easing: ease-out; }
+    touch := TouchArea { clicked => { root.clicked(); } }
+    Rectangle {
+        width: root.box-height * root.aspect * root.grow;
+        height: root.box-height * root.grow;
+        x: (root.width - self.width) / 2;
+        y: root.height - root.box-height - (self.height - root.box-height) / 2;
+        border-radius: 12 * root.u;
+        drop-shadow-blur: root.focused ? 36 * root.u : 8 * root.u;
+        drop-shadow-offset-y: 8 * root.u;
+        drop-shadow-color: #000000a0;
+        background: Theme.surface-muted;
+        Rectangle {
+            border-radius: parent.border-radius;
+            clip: true;
+            if root.game.has-cover: Image {
+                source: root.game.cover;
+                width: parent.width;
+                height: parent.height;
+                image-fit: cover;
+            }
+            if !root.game.has-cover: Text {
+                text: root.game.title;
+                color: Theme.text-muted;
+                font-size: 22 * root.u;
+                font-weight: 600;
+                wrap: word-wrap;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                width: parent.width - 24 * root.u;
+                x: 12 * root.u;
+            }
+            if touch.has-hover && !root.focused: Rectangle { background: Theme.hover; }
+        }
+        if root.game.downloaded: Rectangle {
+            x: Locale.rtl ? 10 * root.u : parent.width - self.width - 10 * root.u;
+            y: 10 * root.u;
+            width: 30 * root.u;
+            height: self.width;
+            border-radius: self.width / 2;
+            background: Theme.success;
+            Text { text: "✓"; color: #ffffff; font-size: 18 * root.u; font-weight: 700; }
+        }
+        if root.focused: Rectangle {
+            border-radius: parent.border-radius;
+            border-width: 4 * root.u;
+            border-color: Theme.text-strong;
+        }
+    }
+}
+
+// The controller's buttons and what they do, along the bottom.
+component TvHints inherits Rectangle {
+    in property <[PadHint]> hints;
+    in property <length> u;
+    height: 56 * root.u;
+    width: tv-hints-row.preferred-width;
+    border-radius: self.height / 2;
+    background: #000000a0;
+    tv-hints-row := Row {
+        padding-left: 16 * root.u;
+        padding-right: 24 * root.u;
+        spacing: 32 * root.u;
+        for hint in root.hints: Row {
+            spacing: 10 * root.u;
+            for key in hint.keys: VerticalLayout {
+                alignment: center;
+                PadBadge { key: key; size: 34 * root.u; }
+            }
+            Text { text: hint.action; color: #e6e8eb; font-size: 22 * root.u; vertical-alignment: center; }
+        }
+    }
+}
+
+// What a press of a key does in TV mode, passed on like a controller's button.
+component TvKeys inherits FocusScope {
+    callback key(string);
+    key-pressed(event) => {
+        if event.modifiers.control || event.modifiers.meta || event.modifiers.alt {
+            return reject;
+        }
+        if event.text == Key.UpArrow || event.text == Key.DownArrow || event.text == Key.LeftArrow
+            || event.text == Key.RightArrow || event.text == Key.Return || event.text == Key.Escape
+            || event.text == Key.Space || event.text == Key.Backspace {
+            root.key(event.text);
+            return accept;
+        }
+        return reject;
+    }
+}
+
+component TvLibrary inherits Rectangle {
+    in property <length> u;
+    in property <[SidebarEntry]> tabs;
+    in property <int> tab;
+    in property <string> selected-key;
+    in property <[GameRow]> rows;
+    in property <int> focus-row;
+    in property <int> focus-col;
+    in property <string> clock;
+    in property <string> count;
+    in property <bool> syncing;
+    in property <image> app-icon;
+    in property <bool> has-app-icon;
+    callback select(string);
+    callback open-game(int);
+    callback columns-changed(int);
+    callback row-shown(int);
+    callback key(string);
+
+    property <length> margin: 96 * root.u;
+    property <length> card-width: 230 * root.u;
+    property <length> card-height: 310 * root.u;
+    property <length> gap: 40 * root.u;
+    property <length> row-height: root.card-height + root.gap * 1.5;
+    property <int> columns: max(1, floor((root.width - 2 * root.margin + root.gap) / (root.card-width + root.gap)));
+    // The margin either side once the columns fill what they can, so the shelves sit centred.
+    property <length> side: max(root.margin, (root.width - root.columns * (root.card-width + root.gap) + root.gap) / 2);
+    property <GameCard> hero: root.rows[max(0, root.focus-row)].cards[max(0, root.focus-col)];
+    property <bool> has-hero: root.focus-row >= 0 && root.hero.title != "";
+    changed columns => { root.columns-changed(self.columns); }
+    // The chosen row stays at the top of the shelves, the way consoles scroll.
+    changed focus-row => { shelves.content-y = -max(0, root.focus-row) * root.row-height; }
+    init => {
+        keys.focus();
+        root.columns-changed(self.columns);
+        shelves.content-y = -max(0, root.focus-row) * root.row-height;
+    }
+
+    background: Theme.background;
+    keys := TvKeys { key(text) => { root.key(text); } }
+
+    // The chosen game's cover, faint behind everything.
+    if root.has-hero && root.hero.has-cover: Image {
+        source: root.hero.cover;
+        width: parent.width;
+        height: parent.height;
+        image-fit: cover;
+        opacity: 0.22;
+    }
+    Rectangle {
+        background: @linear-gradient(180deg, Theme.background.transparentize(0.6) 0%, Theme.background.transparentize(0.1) 45%, Theme.background 100%);
+    }
+
+    // The top: ROM Play, the lists, and the time.
+    Rectangle {
+        y: 40 * root.u;
+        height: 64 * root.u;
+        HorizontalLayout {
+            padding-left: root.side;
+            padding-right: root.side;
+            spacing: 32 * root.u;
+            if root.has-app-icon: VerticalLayout {
+                alignment: center;
+                Image { source: root.app-icon; width: 52 * root.u; height: 52 * root.u; }
+            }
+            // Only whole tabs show, so none is cut off by the clock.
+            Rectangle {
+                horizontal-stretch: 1;
+                tab-strip := Rectangle {
+                    property <length> tab-width: 270 * root.u;
+                    property <length> spacing: 12 * root.u;
+                    property <length> step: self.tab-width + self.spacing;
+                    property <int> shown: max(1, min(root.tabs.length, floor((parent.width + self.spacing) / self.step)));
+                    property <int> first: clamp(root.tab - floor(self.shown / 2), 0, max(0, root.tabs.length - self.shown));
+                    property <length> offset: self.first * self.step;
+                    animate offset { duration: 180ms; easing: ease-out; }
+                    x: Locale.rtl ? parent.width - self.width : 0;
+                    width: self.shown * self.step - self.spacing;
+                    clip: true;
+                    for entry[i] in root.tabs: TvTab {
+                        x: Locale.rtl ? tab-strip.width - (i + 1) * tab-strip.step + tab-strip.spacing + tab-strip.offset
+                            : i * tab-strip.step - tab-strip.offset;
+                        y: (tab-strip.height - self.height) / 2;
+                        width: tab-strip.tab-width;
+                        u: root.u;
+                        entry: entry;
+                        selected: i == root.tab;
+                        clicked => { root.select(entry.key); }
+                    }
+                }
+            }
+            Text {
+                text: root.clock;
+                font-size: 30 * root.u;
+                font-weight: 600;
+                color: Theme.text;
+                vertical-alignment: center;
+            }
+        }
+    }
+
+    // The chosen game's name, and what's here.
+    VerticalLayout {
+        x: root.side;
+        y: 150 * root.u;
+        width: root.width - 2 * root.side;
+        height: 150 * root.u;
+        spacing: 8 * root.u;
+        alignment: start;
+        Text {
+            text: root.has-hero ? root.hero.title : root.syncing ? @tr("Loading your library…") : @tr("No games here.");
+            font-size: 60 * root.u;
+            font-weight: 800;
+            color: Theme.text-strong;
+            overflow: elide;
+            horizontal-alignment: Locale.start;
+        }
+        Text {
+            text: root.has-hero
+                ? root.hero.platform + "  ·  " + (root.hero.downloaded ? @tr("Ready to play") : @tr("On your server")) + "  ·  " + root.count
+                : root.count;
+            font-size: 26 * root.u;
+            color: Theme.text-secondary;
+            overflow: elide;
+            horizontal-alignment: Locale.start;
+        }
+    }
+
+    shelves := ListView {
+        x: 0;
+        y: 320 * root.u;
+        width: root.width;
+        height: root.height - self.y;
+        for row[i] in root.rows: HorizontalLayout {
+            property <int> index: i;
+            height: root.row-height;
+            padding-left: root.side;
+            padding-right: root.side;
+            padding-top: root.gap * 0.75;
+            padding-bottom: root.gap * 0.75;
+            spacing: root.gap;
+            alignment: Locale.rtl ? LayoutAlignment.end : LayoutAlignment.start;
+            init => { root.row-shown(i); }
+            changed index => { root.row-shown(self.index); }
+            for game[j] in row.cards: TvCard {
+                width: root.card-width;
+                height: root.card-height;
+                u: root.u;
+                game: game;
+                focused: i == root.focus-row && j == root.focus-col;
+                clicked => { root.open-game(game.id); }
+            }
+        }
+    }
+}
+
+// A big button on a game's page.
+component TvButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    in property <bool> enabled: true;
+    in property <length> u;
+    in property <PadKey> key;
+    in property <bool> show-key;
+    callback clicked();
+    height: 76 * root.u;
+    width: tv-button-row.preferred-width;
+    border-radius: self.height / 2;
+    background: !root.enabled ? Theme.surface-muted
+        : root.primary ? (touch.has-hover ? #ffffffe0 : #ffffff) : (touch.has-hover ? #ffffff30 : #ffffff1c);
+    opacity: root.enabled ? 1 : 0.6;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { root.clicked(); }
+    touch := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+    tv-button-row := HorizontalLayout {
+        padding-left: 36 * root.u;
+        padding-right: 40 * root.u;
+        spacing: 14 * root.u;
+        if root.show-key: VerticalLayout {
+            alignment: center;
+            PadBadge { key: root.key; size: 34 * root.u; }
+        }
+        Text {
+            text: root.text;
+            font-size: 28 * root.u;
+            font-weight: 700;
+            vertical-alignment: center;
+            color: root.primary && root.enabled ? #0b0d10 : #ffffff;
+        }
+    }
+}
+
+component TvGamePage inherits Rectangle {
+    in property <length> u;
+    in property <string> back-label;
+    in property <string> title;
+    in property <string> subtitle;
+    in property <string> stats;
+    in property <string> summary;
+    in property <[Fact]> facts;
+    in property <[Shot]> shots;
+    in property <image> cover;
+    in property <float> cover-aspect: 0.71;
+    in property <bool> has-cover;
+    in property <bool> downloaded;
+    in property <bool> busy;
+    in property <bool> launching;
+    in property <bool> playable;
+    in property <bool> can-download;
+    in property <float> progress;
+    in property <string> status;
+    in property <bool> can-favorite;
+    in property <bool> favorite;
+    in property <[string]> versions;
+    in property <int> version-index;
+    in property <PadKey> confirm-key;
+    in property <bool> show-keys;
+    callback key(string);
+    callback back();
+    callback play();
+    callback download();
+    callback cancel();
+    callback toggle-favorite();
+    in property <bool> conflict;
+    in property <string> conflict-text;
+    in property <PadKey> other-key;
+    callback keep-local();
+    callback keep-server();
+
+    property <length> margin: 96 * root.u;
+    init => { keys.focus(); }
+    background: Theme.background;
+    keys := TvKeys { key(text) => { root.key(text); } }
+
+    // A screenshot of the game, else its cover, faint behind the page.
+    property <bool> has-shot: root.shots.length > 0 && root.shots[0].loaded;
+    if root.has-shot || root.has-cover: Image {
+        source: root.has-shot ? root.shots[0].image : root.cover;
+        width: parent.width;
+        height: parent.height;
+        image-fit: ImageFit.cover;
+        opacity: root.has-shot ? 0.35 : 0.2;
+    }
+    Rectangle {
+        background: @linear-gradient(90deg, Theme.background 0%, Theme.background.transparentize(0.15) 55%, Theme.background.transparentize(0.6) 100%);
+    }
+
+    // Back to the shelves, with the list it came from.
+    Rectangle {
+        x: root.margin - 16 * root.u;
+        y: 40 * root.u;
+        width: back-text.preferred-width + 32 * root.u;
+        height: 56 * root.u;
+        border-radius: self.height / 2;
+        background: back-touch.has-hover ? Theme.hover : transparent;
+        accessible-role: button;
+        accessible-label: @tr("Back");
+        accessible-action-default => { root.back(); }
+        back-touch := TouchArea { clicked => { root.back(); } }
+        back-text := Text {
+            text: (Locale.rtl ? "›  " : "‹  ") + root.back-label;
+            font-size: 26 * root.u;
+            font-weight: 600;
+            color: Theme.text-secondary;
+        }
+    }
+
+    HorizontalLayout {
+        x: root.margin;
+        y: 140 * root.u;
+        width: root.width - 2 * root.margin;
+        height: root.height - self.y - 120 * root.u;
+        spacing: 72 * root.u;
+        // The box, as tall as it can be within the page.
+        VerticalLayout {
+            alignment: start;
+            property <float> aspect: root.cover-aspect > 0 ? root.cover-aspect : 0.71;
+            property <length> box-height: min(640 * root.u, parent.height);
+            Rectangle {
+                width: min(parent.box-height * parent.aspect, 600 * root.u);
+                height: self.width / parent.aspect;
+                border-radius: 16 * root.u;
+                drop-shadow-blur: 40 * root.u;
+                drop-shadow-offset-y: 12 * root.u;
+                drop-shadow-color: #000000b0;
+                background: Theme.surface-muted;
+                Rectangle {
+                    border-radius: parent.border-radius;
+                    clip: true;
+                    if root.has-cover: Image {
+                        source: root.cover;
+                        width: parent.width;
+                        height: parent.height;
+                        image-fit: ImageFit.cover;
+                    }
+                    if !root.has-cover: Text {
+                        text: root.title;
+                        font-size: 30 * root.u;
+                        color: Theme.text-muted;
+                        wrap: word-wrap;
+                        horizontal-alignment: center;
+                        width: parent.width - 40 * root.u;
+                    }
+                }
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: start;
+            spacing: 18 * root.u;
+            Text {
+                text: root.title;
+                font-size: 64 * root.u;
+                font-weight: 800;
+                color: Theme.text-strong;
+                wrap: word-wrap;
+                horizontal-alignment: Locale.start;
+            }
+            if root.subtitle != "": Text {
+                text: root.subtitle;
+                font-size: 28 * root.u;
+                color: Theme.text-secondary;
+                wrap: word-wrap;
+                horizontal-alignment: Locale.start;
+            }
+            if root.stats != "": Text {
+                text: root.stats;
+                font-size: 22 * root.u;
+                color: Theme.text-muted;
+                horizontal-alignment: Locale.start;
+            }
+            if root.versions.length > 1: Text {
+                text: @tr("Version: {}", root.versions[root.version-index]);
+                font-size: 22 * root.u;
+                color: Theme.text-muted;
+                overflow: elide;
+                horizontal-alignment: Locale.start;
+            }
+            Rectangle { height: 12 * root.u; }
+            // Saves that changed both here and on the server since the last play: which to keep.
+            if root.conflict: VerticalLayout {
+                spacing: 18 * root.u;
+                Text {
+                    text: root.conflict-text;
+                    font-size: 24 * root.u;
+                    color: Theme.text;
+                    wrap: word-wrap;
+                    horizontal-alignment: Locale.start;
+                }
+                Row {
+                    spacing: 20 * root.u;
+                    TvButton {
+                        u: root.u;
+                        text: @tr("Use this computer's save");
+                        primary: true;
+                        key: root.confirm-key;
+                        show-key: root.show-keys;
+                        clicked => { root.keep-local(); }
+                    }
+                    TvButton {
+                        u: root.u;
+                        text: @tr("Use the server's save");
+                        key: root.other-key;
+                        show-key: root.show-keys;
+                        clicked => { root.keep-server(); }
+                    }
+                }
+            }
+            if !root.conflict: Row {
+                spacing: 20 * root.u;
+                if root.downloaded && !root.busy: TvButton {
+                    u: root.u;
+                    text: root.launching ? @tr("Playing") : @tr("Play");
+                    primary: true;
+                    enabled: !root.launching;
+                    key: root.confirm-key;
+                    show-key: root.show-keys;
+                    clicked => { root.play(); }
+                }
+                if !root.downloaded && !root.busy && root.playable: TvButton {
+                    u: root.u;
+                    text: @tr("Download");
+                    primary: true;
+                    enabled: root.can-download;
+                    key: root.confirm-key;
+                    show-key: root.show-keys;
+                    clicked => { root.download(); }
+                }
+                if root.busy: TvButton {
+                    u: root.u;
+                    text: @tr("Cancel");
+                    clicked => { root.cancel(); }
+                }
+                if root.busy: VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 360 * root.u;
+                        height: 12 * root.u;
+                        border-radius: self.height / 2;
+                        background: #ffffff26;
+                        Rectangle {
+                            x: Locale.rtl ? parent.width - self.width : 0;
+                            width: parent.width * clamp(root.progress, 0, 1);
+                            border-radius: parent.border-radius;
+                            background: Theme.accent;
+                        }
+                    }
+                }
+                if root.can-favorite: TvButton {
+                    u: root.u;
+                    text: root.favorite ? "♥  " + @tr("Favorite") : "♡  " + @tr("Favorite");
+                    key: root.other-key;
+                    show-key: root.show-keys;
+                    clicked => { root.toggle-favorite(); }
+                }
+            }
+            if root.status != "": Text {
+                text: root.status;
+                font-size: 24 * root.u;
+                color: Theme.text;
+                wrap: word-wrap;
+                horizontal-alignment: Locale.start;
+            }
+            if !root.playable: Text {
+                text: @tr("ROM Play can't play this console yet.");
+                font-size: 24 * root.u;
+                color: Theme.text-muted;
+                horizontal-alignment: Locale.start;
+            }
+            Rectangle { height: 8 * root.u; }
+            if root.summary != "": Text {
+                text: root.summary;
+                font-size: 24 * root.u;
+                color: Theme.text-secondary;
+                wrap: word-wrap;
+                overflow: elide;
+                height: min(self.preferred-height, 6 * 34 * root.u);
+                horizontal-alignment: Locale.start;
+            }
+            Rectangle {
+                height: 96 * root.u;
+                clip: true;
+                HorizontalLayout {
+                    alignment: start;
+                    spacing: 48 * root.u;
+                    for fact[i] in root.facts: VerticalLayout {
+                        visible: i < 4;
+                        spacing: 4 * root.u;
+                        alignment: start;
+                        Text { text: fact.label; font-size: 18 * root.u; color: Theme.text-muted; horizontal-alignment: Locale.start; }
+                        Text { text: fact.value; font-size: 24 * root.u; color: Theme.text; horizontal-alignment: Locale.start; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The menu Start opens in TV mode.
+component TvMenu inherits Rectangle {
+    in property <length> u;
+    in property <int> index;
+    callback chosen(int);
+    callback close();
+    property <[string]> items: [@tr("Leave TV mode"), @tr("Settings"), @tr("Quit ROM Play")];
+    background: #000000b8;
+    TouchArea { clicked => { root.close(); } }
+    Rectangle {
+        width: 560 * root.u;
+        height: menu-items.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: 28 * root.u;
+        background: Theme.surface-raised;
+        drop-shadow-blur: 60 * root.u;
+        drop-shadow-color: #000000c0;
+        TouchArea { }
+        menu-items := VerticalLayout {
+            padding: 24 * root.u;
+            spacing: 8 * root.u;
+            Text {
+                text: Brand.name;
+                font-size: 26 * root.u;
+                font-weight: 700;
+                color: Theme.text-muted;
+                horizontal-alignment: center;
+                height: 56 * root.u;
+                vertical-alignment: center;
+            }
+            for item[i] in root.items: Rectangle {
+                height: 76 * root.u;
+                border-radius: 18 * root.u;
+                background: i == root.index ? Theme.text-strong : item-touch.has-hover ? Theme.hover : transparent;
+                accessible-role: button;
+                accessible-label: item;
+                accessible-action-default => { root.chosen(i); }
+                item-touch := TouchArea { clicked => { root.chosen(i); } }
+                Text {
+                    text: item;
+                    font-size: 28 * root.u;
+                    font-weight: 600;
+                    color: i == root.index ? Theme.background : Theme.text;
+                }
+            }
+        }
+    }
+}
+
 export component AppWindow inherits Window {
     default-font-family: Locale.font;
     title: Brand.name;
@@ -3305,6 +3964,31 @@ export component AppWindow inherits Window {
     in-out property <bool> pref-pause-unfocused;
     in-out property <bool> pref-resume;
     in-out property <bool> pref-fullscreen;
+    in-out property <bool> pref-tv-mode;
+    // TV mode: full screen, for a TV and a controller.
+    in property <bool> tv-mode;
+    in property <[SidebarEntry]> tv-tabs;
+    in property <int> tv-tab;
+    in property <string> tv-clock;
+    in property <bool> tv-menu-open;
+    in property <int> tv-menu-index;
+    in property <PadKey> tv-confirm-key;
+    in property <PadKey> tv-other-key;
+    callback open-tv();
+    callback tv-key(string);
+    callback tv-menu-chosen(int);
+    callback tv-menu-close();
+    property <length> tv-u: self.height / 1080;
+    // Each view says how many games fit in a row, and the one showing decides.
+    property <int> library-columns;
+    property <int> tv-columns;
+    changed tv-mode => {
+        if root.tv-mode && root.tv-columns > 0 {
+            root.columns-changed(root.tv-columns);
+        } else if !root.tv-mode && root.library-columns > 0 {
+            root.columns-changed(root.library-columns);
+        }
+    }
     in-out property <bool> pref-check-updates;
     in-out property <bool> pref-accept-installs;
     in-out property <float> pref-volume;
@@ -3455,6 +4139,7 @@ export component AppWindow inherits Window {
     in property <[bool]> game-files-downloaded;
     callback choose-game-file(int);
     in property <int> grid-focus-row: -1;
+    in property <int> grid-focus-col;
     in-out property <length> grid-scroll <=> library.scroll-y;
     in property <float> grid-focus-top;
     in property <float> grid-focus-bottom;
@@ -3505,6 +4190,12 @@ export component AppWindow inherits Window {
                 shortcut: @keys(Control + R);
                 enabled: root.in-library && !root.syncing && !root.offline;
                 activated => { root.refresh(); }
+            }
+            MenuItem {
+                title: root.tv-mode ? @tr("Leave TV Mode") : @tr("TV Mode");
+                shortcut: @keys(Control + Shift + T);
+                enabled: root.in-library;
+                activated => { root.open-tv(); }
             }
             MenuSeparator { }
             MenuItem {
@@ -3561,7 +4252,7 @@ export component AppWindow inherits Window {
         retry => { root.retry-pairing(); }
     }
     library := Library {
-        visible: root.in-library;
+        visible: root.in-library && !root.tv-mode;
         narrow: root.narrow;
         page-open: root.screen == 3 || root.screen == 4;
         user-label: root.user-label;
@@ -3579,7 +4270,10 @@ export component AppWindow inherits Window {
         rename-collection(key) => { root.rename-collection(key); }
         delete-collection(key) => { root.delete-collection(key); }
         search-edited(text) => { root.search-edited(text); }
-        columns-changed(n) => { root.columns-changed(n); }
+        columns-changed(n) => {
+            root.library-columns = n;
+            if !root.tv-mode { root.columns-changed(n); }
+        }
         row-shown(i) => { root.row-shown(i); }
         refresh => { root.refresh(); }
         surprise-me => { root.surprise-me(); }
@@ -3635,6 +4329,7 @@ export component AppWindow inherits Window {
         app-icon: root.app-icon;
         has-app-icon: root.has-app-icon;
         add-local-game => { root.add-local-game(); }
+        open-tv => { root.open-tv(); }
         open-about => {
             root.about-log-note = "";
             root.about-open = true;
@@ -3741,6 +4436,7 @@ export component AppWindow inherits Window {
             pause-unfocused <=> root.pref-pause-unfocused;
             resume <=> root.pref-resume;
             fullscreen <=> root.pref-fullscreen;
+            tv-mode <=> root.pref-tv-mode;
             check-updates <=> root.pref-check-updates;
             update-status: root.settings-update-status;
             check-updates-now => { root.check-updates-now(); }
@@ -3764,6 +4460,77 @@ export component AppWindow inherits Window {
             section-changed(i) => { root.settings-section-changed(i); }
         }
     }
+    if root.tv-mode && root.screen == 2: TvLibrary {
+        u: root.tv-u;
+        tabs: root.tv-tabs;
+        tab: root.tv-tab;
+        selected-key: root.selected-key;
+        rows: root.rows;
+        focus-row: root.grid-focus-row;
+        focus-col: root.grid-focus-col;
+        clock: root.tv-clock;
+        count: root.heading-detail;
+        syncing: root.syncing;
+        app-icon: root.app-icon;
+        has-app-icon: root.has-app-icon;
+        select(key) => { root.select(key); }
+        open-game(id) => { root.open-game(id); }
+        columns-changed(n) => {
+            root.tv-columns = n;
+            if root.tv-mode { root.columns-changed(n); }
+        }
+        row-shown(i) => { root.row-shown(i); }
+        key(text) => { root.tv-key(text); }
+    }
+    if root.tv-mode && root.screen == 3: TvGamePage {
+        u: root.tv-u;
+        back-label: root.heading;
+        title: root.game-title;
+        subtitle: root.game-subtitle;
+        stats: root.game-stats;
+        summary: root.game-summary;
+        facts: root.game-facts;
+        shots: root.game-shots;
+        cover: root.game-cover;
+        cover-aspect: root.game-cover-aspect;
+        has-cover: root.has-game-cover;
+        downloaded: root.game-downloaded;
+        busy: root.game-busy;
+        launching: root.game-launching;
+        playable: root.game-playable;
+        can-download: root.game-can-download;
+        progress: root.game-progress;
+        status: root.game-status;
+        can-favorite: root.can-edit-collections;
+        favorite: root.game-favorite;
+        versions: root.game-versions;
+        version-index: root.game-version-index;
+        confirm-key: root.tv-confirm-key;
+        other-key: root.tv-other-key;
+        show-keys: root.pad-hints.length > 0;
+        conflict: root.save-conflict;
+        conflict-text: root.conflict-text;
+        keep-local => { root.keep-local-save(); }
+        keep-server => { root.keep-server-save(); }
+        key(text) => { root.tv-key(text); }
+        back => { root.back-to-library(); }
+        play => { root.play-game(); }
+        download => { root.download-game(); }
+        cancel => { root.cancel-download(); }
+        toggle-favorite => { root.toggle-favorite(); }
+    }
+    if root.tv-mode && root.pad-hints.length > 0 && !root.dialog-open && !root.tv-menu-open: TvHints {
+        u: root.tv-u;
+        hints: root.pad-hints;
+        x: (parent.width - self.width) / 2;
+        y: parent.height - self.height - 36 * root.tv-u;
+    }
+    if root.tv-mode && root.tv-menu-open: TvMenu {
+        u: root.tv-u;
+        index: root.tv-menu-index;
+        chosen(i) => { root.tv-menu-chosen(i); }
+        close => { root.tv-menu-close(); }
+    }
     if root.remap-open: RemapDialog {
         title: root.remap-title;
         hint: root.remap-hint;
@@ -3784,7 +4551,7 @@ export component AppWindow inherits Window {
         reset => { root.remap-reset(); }
         close => { root.remap-close(); }
     }
-    if root.pad-hints.length > 0 && !root.dialog-open: Rectangle {
+    if !root.tv-mode && root.pad-hints.length > 0 && !root.dialog-open: Rectangle {
         x: Locale.rtl ? 16px : parent.width - self.width - 16px;
         y: parent.height - self.height - 12px;
         width: hints-row.preferred-width;

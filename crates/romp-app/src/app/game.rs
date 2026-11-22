@@ -868,7 +868,7 @@ impl Controller {
                 )
             }
         };
-        let prefs = self.prefs.get();
+        let prefs = self.play_prefs();
         let pads = self.gamepads.borrow().connected().len();
         let config = xemu::LaunchConfig {
             bootrom,
@@ -990,7 +990,7 @@ impl Controller {
             Err(e) => return self.game_status(detail.id, e),
         };
         let home = rpcs3::Home(paths::data_dir().join("rpcs3"));
-        let prefs = self.prefs.get();
+        let prefs = self.play_prefs();
         let names: Vec<String> = self
             .gamepads
             .borrow()
@@ -1114,7 +1114,7 @@ impl Controller {
         let firmware = (!home.firmware_installed())
             .then(|| ryujinx::find_firmware(&switch))
             .flatten();
-        let fullscreen = self.prefs.get().fullscreen;
+        let fullscreen = self.play_prefs().fullscreen;
         let start = match &firmware {
             Some(firmware) => ryujinx::Start::InstallFirmware(firmware),
             None => ryujinx::Start::Game {
@@ -1244,7 +1244,7 @@ impl Controller {
             Some(id) => vita3k::Start::Installed(id),
             None => vita3k::Start::Install(&content),
         };
-        let fullscreen = self.prefs.get().fullscreen;
+        let fullscreen = self.play_prefs().fullscreen;
         let id = detail.id;
         let on_exit = move |code: Option<i32>, log: Vec<String>| {
             let _ = slint::invoke_from_event_loop(move || {
@@ -1309,7 +1309,7 @@ impl Controller {
             Err(e) => return self.game_status(detail.id, e),
         };
         let home = shadps4::Home(paths::data_dir().join("shadps4"));
-        let fullscreen = self.prefs.get().fullscreen;
+        let fullscreen = self.play_prefs().fullscreen;
         let id = detail.id;
         let on_exit = move |code: Option<i32>, log: Vec<String>| {
             let _ = slint::invoke_from_event_loop(move || {
@@ -1329,6 +1329,13 @@ impl Controller {
                 tr!("Could not start {name}: {e}", name = "shadPS4", e),
             ),
         }
+    }
+
+    /// The settings a game starts with: in TV mode, it always starts full screen.
+    fn play_prefs(&self) -> crate::prefs::Preferences {
+        let mut prefs = self.prefs.get();
+        prefs.fullscreen |= self.tv();
+        prefs
     }
 
     pub(super) fn external_closed(&self, id: i64, name: &str, code: Option<i32>, log: Vec<String>) {
@@ -1580,7 +1587,7 @@ impl Controller {
             || paths::game_save_dir(&paths::data_dir(), &self.server(), detail.id),
             |game| game.dir,
         );
-        let prefs = self.prefs.get();
+        let prefs = self.play_prefs();
         let states = core_for_platform(&detail.platform_slug)
             .is_none_or(|core| crate::cores::saves_states(core.id));
         let reliable = states
