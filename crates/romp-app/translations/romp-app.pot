@@ -52,7 +52,8 @@ msgid "Emulators taken care of"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "ROM Play sets up the right emulator for each game and runs it in a sandbox."
+msgid ""
+"ROM Play sets up the right emulator for each game and runs it in a sandbox."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -73,8 +74,8 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 msgid ""
-"This computer has no keychain, so your sign-in will be kept in a file in "
-"ROM Play's data folder that only your user account can read."
+"This computer has no keychain, so your sign-in will be kept in a file in ROM "
+"Play's data folder that only your user account can read."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -154,10 +155,11 @@ msgid "Dismiss"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-#: crates/romp-app/ui/app.slint
+#: crates/romp-app/ui/app.slint crates/romp-app/ui/game.slint
 msgid "Play"
 msgstr ""
 
+#: crates/romp-app/ui/app.slint
 #: crates/romp-app/ui/app.slint
 #: crates/romp-app/ui/app.slint
 msgid "Cancel"
@@ -198,9 +200,19 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 #: crates/romp-app/ui/app.slint
+msgid "Add a game from this computer"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "TV mode"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+#: crates/romp-app/ui/app.slint
 msgid "About"
 msgstr ""
 
+#: crates/romp-app/ui/app.slint
 #: crates/romp-app/ui/app.slint
 #: crates/romp-app/ui/app.slint
 msgid "Settings"
@@ -239,6 +251,14 @@ msgid "Refresh library"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
+msgid "ROM Play {} is ready to install."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Downloading ROM Play {}…"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
 msgid "ROM Play {} is available. Run “brew upgrade romp” to update."
 msgstr ""
 
@@ -246,6 +266,11 @@ msgstr ""
 msgid "ROM Play {} is available."
 msgstr ""
 
+#: crates/romp-app/ui/app.slint
+msgid "Restart to update"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
 #: crates/romp-app/ui/app.slint
 msgid "Download"
 msgstr ""
@@ -290,6 +315,10 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 msgid "Delete download"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Remove from ROM Play"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -422,6 +451,16 @@ msgid "Press F11 in a game to switch at any time."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
+msgid "Open in TV mode"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid ""
+"ROM Play starts full screen, for a TV and a controller. The View or Select "
+"button switches at any time."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
 msgid "Game volume"
 msgstr ""
 
@@ -467,8 +506,12 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 msgid ""
-"Once a day, ROM Play asks GitHub for its newest version, and tells you when "
-"there is one."
+"Once a day, ROM Play asks GitHub for its newest version, downloads it, and "
+"installs it when ROM Play restarts."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Check now"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -536,8 +579,8 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 msgid ""
-"Games with achievements show them as you play. ROM Play keeps a sign-in token, "
-"not your password."
+"Games with achievements show them as you play. ROM Play keeps a sign-in "
+"token, not your password."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -657,6 +700,20 @@ msgid ""
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
+msgid "shadPS4 settings"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid ""
+"Graphics, controls, patches and more, in shadPS4's own settings app. Close "
+"it before playing; changes apply the next time you start a PS4 game."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Open"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
 msgid "None of the emulators on this computer has settings yet."
 msgstr ""
 
@@ -703,6 +760,43 @@ msgid "Done"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
+msgid "App"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "ROM file"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Console"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid ""
+"The console the game first came out on, such as Nintendo Switch 2 for a "
+"recomp, or Mac for a Mac game."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid ""
+"The console this ROM is for. ROM Play plays it with that console's emulator."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Same game in your RomM library"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid ""
+"It lends this game its cover, details and screenshots. Without one, a Mac "
+"app keeps its own icon, and other apps show the console's."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Add"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
 msgid "What’s new in ROM Play {}"
 msgstr ""
 
@@ -731,7 +825,7 @@ msgid "Version {} is available"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "By"
+msgid "Based on RomP by"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -739,7 +833,7 @@ msgid "Games and saves come from your RomM server."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
-msgid "Emulation by libretro cores, xemu and RPCS3."
+msgid "Emulation by libretro cores, xemu, RPCS3 and shadPS4."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -756,7 +850,8 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 msgid ""
-"ROM Play and the emulators it downloads are each covered by their own license."
+"ROM Play and the emulators it downloads are each covered by their own "
+"license."
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -765,6 +860,42 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 msgid "GitHub"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "No games here."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Ready to play"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "On your server"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Version: {}"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Playing"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Favorite"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "ROM Play can't play this console yet."
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Leave TV mode"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Quit ROM Play"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint
@@ -777,6 +908,14 @@ msgstr ""
 
 #: crates/romp-app/ui/app.slint
 msgid "Refresh"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "Leave TV Mode"
+msgstr ""
+
+#: crates/romp-app/ui/app.slint
+msgid "TV Mode"
 msgstr ""
 
 #: crates/romp-app/ui/app.slint

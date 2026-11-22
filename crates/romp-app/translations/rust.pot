@@ -140,12 +140,24 @@ msgstr ""
 msgid "RetroAchievements did not accept the sign-in"
 msgstr ""
 
+#: crates/romp-app/src/app/game.rs crates/romp-app/src/app/settings.rs
+msgid "Updating {name}…"
+msgstr ""
+
+#: crates/romp-app/src/app/game.rs crates/romp-app/src/app/settings.rs
+msgid "Installing {name}…"
+msgstr ""
+
 #: crates/romp-app/src/app/game.rs
 msgid "ROM Play can't play {} games yet."
 msgstr ""
 
 #: crates/romp-app/src/app/game.rs
 msgid "Another download is in progress."
+msgstr ""
+
+#: crates/romp-app/src/app/game.rs
+msgid "This game's file isn't where it was added from anymore. Remove it and add it again."
 msgstr ""
 
 #: crates/romp-app/src/app/game.rs
@@ -172,12 +184,8 @@ msgstr ""
 msgid "Still syncing your saves. Try again in a moment."
 msgstr ""
 
-#: crates/romp-app/src/app/game.rs
+#: crates/romp-app/src/app/game.rs crates/romp-app/src/app/settings.rs
 msgid "Getting ready…"
-msgstr ""
-
-#: crates/romp-app/src/app/game.rs
-msgid "Installing {name}…"
 msgstr ""
 
 #: crates/romp-app/src/app/game.rs
@@ -196,7 +204,7 @@ msgstr ""
 msgid "Could not write {name}'s settings: {e}"
 msgstr ""
 
-#: crates/romp-app/src/app/game.rs crates/romp-app/src/rpcs3.rs
+#: crates/romp-app/src/app/game.rs crates/romp-app/src/app/settings.rs crates/romp-app/src/rpcs3.rs crates/romp-app/src/vita3k.rs
 msgid "Could not start {name}: {e}"
 msgstr ""
 
@@ -208,7 +216,27 @@ msgstr ""
 msgid "Installing the PS3 system software…"
 msgstr ""
 
-#: crates/romp-app/src/app/game.rs crates/romp-app/src/app/slots.rs
+#: crates/romp-app/src/app/game.rs
+msgid "Press Play again to start the game."
+msgstr ""
+
+#: crates/romp-app/src/app/game.rs
+msgid "Ryubing is installing the Switch firmware from your RomM. Confirm it there, then quit Ryubing and press Play again."
+msgstr ""
+
+#: crates/romp-app/src/app/game.rs
+msgid "Installing the PS Vita system software…"
+msgstr ""
+
+#: crates/romp-app/src/app/game.rs
+msgid "Vita3K is installing the game, then it starts."
+msgstr ""
+
+#: crates/romp-app/src/app/game.rs crates/romp-app/src/app/settings.rs
+msgid "shadPS4 needs Rosetta 2. Install it by running softwareupdate --install-rosetta in Terminal, then try again."
+msgstr ""
+
+#: crates/romp-app/src/app/game.rs crates/romp-app/src/app/local_games.rs crates/romp-app/src/app/slots.rs
 msgid "Close the running game first."
 msgstr ""
 
@@ -710,12 +738,32 @@ msgstr ""
 msgid "Paused on this device"
 msgstr ""
 
+#: crates/romp-app/src/app/local_games.rs
+msgid "None"
+msgstr ""
+
+#: crates/romp-app/src/app/local_games.rs
+msgid "Choose a name and a console."
+msgstr ""
+
+#: crates/romp-app/src/app/local_games.rs
+msgid "Could not open {name}: {e}"
+msgstr ""
+
 #: crates/romp-app/src/app/navigation.rs
 msgid "D-pad"
 msgstr ""
 
 #: crates/romp-app/src/app/navigation.rs
 msgid "Move"
+msgstr ""
+
+#: crates/romp-app/src/app/navigation.rs
+msgid "Choose"
+msgstr ""
+
+#: crates/romp-app/src/app/navigation.rs
+msgid "Close"
 msgstr ""
 
 #: crates/romp-app/src/app/navigation.rs
@@ -730,8 +778,28 @@ msgstr ""
 msgid "Surprise me"
 msgstr ""
 
+#: crates/romp-app/src/app/navigation.rs crates/romp-app/src/pad_labels.rs
+msgid "Menu"
+msgstr ""
+
+#: crates/romp-app/src/app/navigation.rs
+msgid "Use this computer's save"
+msgstr ""
+
+#: crates/romp-app/src/app/navigation.rs
+msgid "Use the server's save"
+msgstr ""
+
+#: crates/romp-app/src/app/navigation.rs crates/romp-app/src/controllers.rs crates/romp-app/src/pad_labels.rs
+msgid "Back"
+msgstr ""
+
 #: crates/romp-app/src/app/navigation.rs
 msgid "Settings"
+msgstr ""
+
+#: crates/romp-app/src/app/navigation.rs
+msgid "TV mode"
 msgstr ""
 
 #: crates/romp-app/src/app/navigation.rs
@@ -748,10 +816,6 @@ msgstr ""
 
 #: crates/romp-app/src/app/navigation.rs
 msgid "Change file"
-msgstr ""
-
-#: crates/romp-app/src/app/navigation.rs crates/romp-app/src/controllers.rs crates/romp-app/src/pad_labels.rs
-msgid "Back"
 msgstr ""
 
 #: crates/romp-app/src/app/navigation.rs
@@ -776,6 +840,34 @@ msgstr ""
 
 #: crates/romp-app/src/app/slots.rs
 msgid "Couldn't delete the save state: {}."
+msgstr ""
+
+#: crates/romp-app/src/app/updates.rs
+msgid "Checking…"
+msgstr ""
+
+#: crates/romp-app/src/app/updates.rs
+msgid "Could not reach GitHub to check ({e})"
+msgstr ""
+
+#: crates/romp-app/src/app/updates.rs
+msgid "ROM Play {} is ready. Restart ROM Play to update."
+msgstr ""
+
+#: crates/romp-app/src/app/updates.rs
+msgid "Downloading ROM Play {}…"
+msgstr ""
+
+#: crates/romp-app/src/app/updates.rs
+msgid "ROM Play {} is available."
+msgstr ""
+
+#: crates/romp-app/src/app/updates.rs
+msgid "ROM Play is up to date."
+msgstr ""
+
+#: crates/romp-app/src/app/updates.rs
+msgid "The update couldn't be installed ({e}). Download it from GitHub instead."
 msgstr ""
 
 #: crates/romp-app/src/app/whats_new.rs
@@ -911,15 +1003,19 @@ msgid "Right stick"
 msgstr ""
 
 #: crates/romp-app/src/cores.rs
+msgid "Could not reach the core download server"
+msgstr ""
+
+#: crates/romp-app/src/cores.rs
+msgid "The core is not available for this computer"
+msgstr ""
+
+#: crates/romp-app/src/cores.rs
 msgid "Could not reach the download server"
 msgstr ""
 
 #: crates/romp-app/src/cores.rs
 msgid "Could not check the core download"
-msgstr ""
-
-#: crates/romp-app/src/cores.rs
-msgid "Could not reach the core download server"
 msgstr ""
 
 #: crates/romp-app/src/cores.rs
@@ -1095,6 +1191,10 @@ msgid "This copy is in {0}'s own format ({1}), which ROM Play can't play. A {2} 
 msgstr ""
 
 #: crates/romp-app/src/external.rs
+msgid "{name} has not been installed yet"
+msgstr ""
+
+#: crates/romp-app/src/external.rs
 msgid "Could not reach GitHub to download {name}"
 msgstr ""
 
@@ -1112,6 +1212,18 @@ msgstr ""
 
 #: crates/romp-app/src/external.rs
 msgid "The {name} download did not contain the emulator"
+msgstr ""
+
+#: crates/romp-app/src/external.rs
+msgid "Could not reach the internet to download {name}"
+msgstr ""
+
+#: crates/romp-app/src/external.rs
+msgid "The download has no name"
+msgstr ""
+
+#: crates/romp-app/src/external.rs
+msgid "Could not unpack the game: {e}"
 msgstr ""
 
 #: crates/romp-app/src/looks.rs
@@ -1280,10 +1392,6 @@ msgstr ""
 
 #: crates/romp-app/src/pad_labels.rs
 msgid "Guide"
-msgstr ""
-
-#: crates/romp-app/src/pad_labels.rs
-msgid "Menu"
 msgstr ""
 
 #: crates/romp-app/src/pad_labels.rs
@@ -1465,19 +1573,35 @@ msgid "ROM Play plays PS3 games stored as a game folder, an ISO, or a zip or 7z 
 msgstr ""
 
 #: crates/romp-app/src/rpcs3.rs
-msgid "The download has no name"
-msgstr ""
-
-#: crates/romp-app/src/rpcs3.rs
-msgid "Could not unpack the game: {e}"
-msgstr ""
-
-#: crates/romp-app/src/rpcs3.rs
 msgid "The archive has no PS3 game folder or ISO in it"
+msgstr ""
+
+#: crates/romp-app/src/ryujinx.rs
+msgid "This Switch game's folder has no .nsp or .xci in it"
+msgstr ""
+
+#: crates/romp-app/src/ryujinx.rs
+msgid "ROM Play plays Switch games stored as an .nsp or .xci, or a zip or 7z of one, and this one is a {kind} file."
+msgstr ""
+
+#: crates/romp-app/src/ryujinx.rs
+msgid "The archive has no Switch game in it"
 msgstr ""
 
 #: crates/romp-app/src/saves.rs
 msgid "another emulator"
+msgstr ""
+
+#: crates/romp-app/src/shadps4.rs
+msgid "This PS4 game folder has no eboot.bin in it"
+msgstr ""
+
+#: crates/romp-app/src/shadps4.rs
+msgid "ROM Play plays PS4 games stored as an installed game folder with an eboot.bin, or a zip or 7z of one, and this one is a {kind} file."
+msgstr ""
+
+#: crates/romp-app/src/shadps4.rs
+msgid "The archive has no PS4 game folder with an eboot.bin in it"
 msgstr ""
 
 #: crates/romp-app/src/storage.rs
@@ -1494,6 +1618,22 @@ msgstr ""
 
 #: crates/romp-app/src/storage.rs
 msgid "Images"
+msgstr ""
+
+#: crates/romp-app/src/vita3k.rs
+msgid "Vita3K could not install the PS Vita system software."
+msgstr ""
+
+#: crates/romp-app/src/vita3k.rs
+msgid "This PS Vita game's folder has no sce_sys/param.sfo in it"
+msgstr ""
+
+#: crates/romp-app/src/vita3k.rs
+msgid "ROM Play plays PS Vita games stored as a .vpk, a .zip or a game folder, and this one is a {kind} file."
+msgstr ""
+
+#: crates/romp-app/src/vita3k.rs
+msgid "The archive has no PS Vita game in it"
 msgstr ""
 
 #: crates/romp-app/src/xemu.rs
