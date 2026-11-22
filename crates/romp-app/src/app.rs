@@ -338,6 +338,7 @@ pub fn run() -> anyhow::Result<()> {
         }
     });
     crate::self_update::install_when_exiting();
+    crate::self_update::clean_up_after_update();
     slint::run_event_loop()?;
     controller.save_session();
     // An update downloaded while ROM Play ran goes in as it quits, so the next start is the new one.

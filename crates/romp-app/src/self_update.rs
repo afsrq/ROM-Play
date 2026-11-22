@@ -1,5 +1,7 @@
-//! Installs a newer ROM Play over the one running, on macOS: downloaded and checked in the
-//! background, then put in place when ROM Play restarts or quits.
+//! Installs a newer ROM Play over the one running: downloaded and checked in the background, then
+//! put in place when ROM Play restarts or quits. On a Mac it replaces the app, on Windows the
+//! files in ROM Play's folder, and on Linux the AppImage. A .deb or .rpm is left to the package
+//! manager.
 
 use crate::updates::Release;
 use std::path::{Path, PathBuf};
@@ -56,12 +58,54 @@ pub fn install_pending_now() {
 /// Whether this computer can update ROM Play in place. Elsewhere the update banner links to
 /// the download instead.
 pub fn supported() -> bool {
-    cfg!(target_os = "macos")
+    cfg!(any(target_os = "macos", windows)) || appimage().is_some()
 }
 
-/// The `.app` this ROM Play runs from, or `None` for a build run straight from its folder.
+/// The AppImage this ROM Play runs from, which its runtime names.
+fn appimage() -> Option<PathBuf> {
+    if !cfg!(target_os = "linux") {
+        return None;
+    }
+    std::env::var_os("APPIMAGE")
+        .map(PathBuf::from)
+        .filter(|p| p.is_file())
+}
+
+/// What an update replaces: the `.app` on a Mac, the folder of the downloaded zip on Windows, and
+/// the AppImage on Linux. `None` for a build run straight from where it was built.
 pub fn running_app() -> Option<PathBuf> {
-    app_containing(&std::env::current_exe().ok()?)
+    if cfg!(target_os = "macos") {
+        app_containing(&std::env::current_exe().ok()?)
+    } else if cfg!(windows) {
+        release_folder(&std::env::current_exe().ok()?)
+    } else {
+        appimage()
+    }
+}
+
+/// The folder a downloaded Windows ROM Play runs from, which has its license beside it, unlike a
+/// build's own folder.
+fn release_folder(exe: &Path) -> Option<PathBuf> {
+    let folder = exe.parent()?;
+    (folder.join("LICENSE").is_file() && folder.join(RUNNER).is_file())
+        .then(|| folder.to_path_buf())
+}
+
+const RUNNER: &str = if cfg!(windows) {
+    "romp-runner.exe"
+} else {
+    "romp-runner"
+};
+const ROMP: &str = if cfg!(windows) { "romp.exe" } else { "romp" };
+
+/// What an update has to be to replace this ROM Play: on a Mac, an app with its bundle
+/// identifier. Elsewhere the download's checksum and what's in it are enough.
+pub fn identity(app: &Path) -> Option<String> {
+    if cfg!(target_os = "macos") {
+        bundle_id(app)
+    } else {
+        Some(String::new())
+    }
 }
 
 fn app_containing(exe: &Path) -> Option<PathBuf> {
@@ -74,9 +118,15 @@ fn app_containing(exe: &Path) -> Option<PathBuf> {
     is_bundle.then(|| app.to_path_buf())
 }
 
-/// Whether the folder the app is in, such as Applications, lets this user replace it.
+/// Whether the folder the app is in, such as Applications, lets this user replace it. On
+/// Windows the files are replaced inside ROM Play's own folder.
 pub fn can_replace(app: &Path) -> bool {
-    let Some(folder) = app.parent() else {
+    let folder = if cfg!(windows) {
+        Some(app)
+    } else {
+        app.parent()
+    };
+    let Some(folder) = folder else {
         return false;
     };
     let probe = folder.join(format!(".rom-play-update-{}", std::process::id()));
@@ -178,6 +228,16 @@ fn unpack_and_check(
 ) -> Result<PathBuf, String> {
     let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    if cfg!(target_os = "macos") {
+        unpack_app(bytes, dir, bundle, version)
+    } else if cfg!(windows) {
+        unpack_folder(bytes, dir)
+    } else {
+        stage_appimage(bytes, dir)
+    }
+}
+
+fn unpack_app(bytes: &[u8], dir: &Path, bundle: &str, version: &str) -> Result<PathBuf, String> {
     let zip = dir.join("update.zip");
     std::fs::write(&zip, bytes).map_err(|e| e.to_string())?;
     // ditto keeps the app's links, permissions and signature intact.
@@ -196,13 +256,51 @@ fn unpack_and_check(
     Ok(app)
 }
 
-/// Puts the staged app where the running one is. The running one is moved aside first and put
-/// back if the copy fails, so a failed update leaves ROM Play as it was.
+/// The Windows zip holds one folder with ROM Play's programs in it.
+fn unpack_folder(bytes: &[u8], dir: &Path) -> Result<PathBuf, String> {
+    zip::ZipArchive::new(std::io::Cursor::new(bytes))
+        .and_then(|mut archive| archive.extract(dir))
+        .map_err(|e| format!("unpacking the update failed: {e}"))?;
+    let has_programs = |d: &Path| d.join(ROMP).is_file() && d.join(RUNNER).is_file();
+    if has_programs(dir) {
+        return Ok(dir.to_path_buf());
+    }
+    std::fs::read_dir(dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .map(|e| e.path())
+        .find(|p| has_programs(p))
+        .ok_or_else(|| "the download has no ROM Play in it".to_string())
+}
+
+fn stage_appimage(bytes: &[u8], dir: &Path) -> Result<PathBuf, String> {
+    if !bytes.starts_with(b"\x7fELF") {
+        return Err("the download isn't an AppImage".into());
+    }
+    let file = dir.join("ROM-Play.AppImage");
+    std::fs::write(&file, bytes).map_err(|e| e.to_string())?;
+    Ok(file)
+}
+
+/// Puts the staged update where the running ROM Play is. What it replaces is kept until the new
+/// one is in, so a failed update leaves ROM Play as it was.
 pub fn install(pending: &Pending) -> Result<(), String> {
+    if cfg!(target_os = "macos") {
+        install_app(pending)?;
+    } else if cfg!(windows) {
+        install_files(&pending.staged, &pending.app)?;
+    } else {
+        install_appimage(&pending.staged, &pending.app)?;
+    }
+    if let Some(dir) = pending.staged.parent() {
+        let _ = std::fs::remove_dir_all(dir);
+    }
+    Ok(())
+}
+
+fn install_app(pending: &Pending) -> Result<(), String> {
     let app = &pending.app;
-    let mut old = app.as_os_str().to_os_string();
-    old.push(".old");
-    let old = PathBuf::from(old);
+    let old = with_suffix(app, ".old");
     let _ = std::fs::remove_dir_all(&old);
     std::fs::rename(app, &old).map_err(|e| format!("moving the old app aside: {e}"))?;
     let copied = std::process::Command::new("/usr/bin/ditto")
@@ -217,25 +315,144 @@ pub fn install(pending: &Pending) -> Result<(), String> {
         ));
     }
     let _ = std::fs::remove_dir_all(&old);
-    if let Some(dir) = pending.staged.parent() {
-        let _ = std::fs::remove_dir_all(dir);
+    Ok(())
+}
+
+fn with_suffix(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = path.as_os_str().to_os_string();
+    name.push(suffix);
+    PathBuf::from(name)
+}
+
+/// The new AppImage is written beside the old one, then renamed over it in one step, which Linux
+/// allows while the old one runs.
+fn install_appimage(staged: &Path, appimage: &Path) -> Result<(), String> {
+    let next = with_suffix(appimage, ".new");
+    std::fs::copy(staged, &next).map_err(|e| format!("copying the new AppImage: {e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(appimage).map_or(0o755, |m| m.permissions().mode() | 0o111);
+        std::fs::set_permissions(&next, std::fs::Permissions::from_mode(mode))
+            .map_err(|e| e.to_string())?;
+    }
+    std::fs::rename(&next, appimage).map_err(|e| {
+        let _ = std::fs::remove_file(&next);
+        format!("putting the new AppImage in place: {e}")
+    })
+}
+
+/// Replaces ROM Play's files one by one. Windows won't delete a program that's running, but it
+/// will rename one, so each old file is renamed aside first, then removed, or left for the next
+/// start to remove when it's still running.
+fn install_files(staged: &Path, folder: &Path) -> Result<(), String> {
+    let mut files = Vec::new();
+    list_files(staged, staged, &mut files).map_err(|e| e.to_string())?;
+    let mut moved: Vec<(PathBuf, PathBuf)> = Vec::new();
+    let mut placed: Vec<PathBuf> = Vec::new();
+    let result = files
+        .iter()
+        .try_for_each(|relative| -> std::io::Result<()> {
+            let target = folder.join(relative);
+            if let Some(parent) = target.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            if target.exists() {
+                let aside = with_suffix(&target, OLD);
+                let _ = std::fs::remove_file(&aside);
+                std::fs::rename(&target, &aside)?;
+                moved.push((target.clone(), aside));
+            }
+            std::fs::copy(staged.join(relative), &target)?;
+            placed.push(target);
+            Ok(())
+        });
+    if let Err(e) = result {
+        for file in placed {
+            let _ = std::fs::remove_file(file);
+        }
+        for (target, aside) in moved {
+            let _ = std::fs::rename(aside, target);
+        }
+        return Err(format!("putting the new files in place: {e}"));
+    }
+    for (_, aside) in moved {
+        let _ = std::fs::remove_file(aside);
     }
     Ok(())
 }
 
+const OLD: &str = ".old";
+
+fn list_files(root: &Path, dir: &Path, into: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            list_files(root, &path, into)?;
+        } else if let Ok(relative) = path.strip_prefix(root) {
+            into.push(relative.to_path_buf());
+        }
+    }
+    Ok(())
+}
+
+/// Removes what an update on Windows set aside while it was still running.
+pub fn clean_up_after_update() {
+    if !cfg!(windows) {
+        return;
+    }
+    let Some(folder) = running_app() else { return };
+    let mut files = Vec::new();
+    if list_files(&folder, &folder, &mut files).is_ok() {
+        for file in files {
+            if file.to_string_lossy().ends_with(OLD) {
+                let _ = std::fs::remove_file(folder.join(file));
+            }
+        }
+    }
+}
+
 /// Opens the app again once this process has exited, so the new version starts fresh.
 pub fn relaunch_after_exit(app: &Path) -> std::io::Result<()> {
-    std::process::Command::new("/bin/sh")
-        .arg("-c")
-        .arg(r#"while kill -0 "$1" 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open "$2""#)
-        .arg("sh")
-        .arg(std::process::id().to_string())
-        .arg(app)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .map(|_| ())
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let script = format!(
+            "Wait-Process -Id {} -ErrorAction SilentlyContinue; Start-Process -FilePath $args[0]",
+            std::process::id()
+        );
+        std::process::Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .arg(app.join(ROMP))
+            .creation_flags(CREATE_NO_WINDOW)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map(|_| ())
+    }
+    #[cfg(not(windows))]
+    {
+        let open = if cfg!(target_os = "macos") {
+            r#"exec /usr/bin/open "$2""#
+        } else {
+            r#"exec "$2""#
+        };
+        std::process::Command::new("/bin/sh")
+            .arg("-c")
+            .arg(format!(
+                r#"while kill -0 "$1" 2>/dev/null; do sleep 0.2; done; {open}"#
+            ))
+            .arg("sh")
+            .arg(std::process::id().to_string())
+            .arg(app)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .map(|_| ())
+    }
 }
 
 #[cfg(test)]
@@ -252,6 +469,74 @@ mod tests {
             app_containing(Path::new("/Users/me/target/release/romp")),
             None
         );
+    }
+
+    #[test]
+    fn new_files_replace_old_ones_and_a_failure_puts_them_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("ROM Play");
+        let staged = dir.path().join("staged");
+        std::fs::create_dir_all(folder.join("shaders")).unwrap();
+        std::fs::create_dir_all(staged.join("shaders")).unwrap();
+        std::fs::write(folder.join(ROMP), b"old").unwrap();
+        std::fs::write(folder.join("shaders/a.glsl"), b"old").unwrap();
+        std::fs::write(folder.join("mine.txt"), b"kept").unwrap();
+        std::fs::write(staged.join(ROMP), b"new").unwrap();
+        std::fs::write(staged.join("shaders/a.glsl"), b"new").unwrap();
+        std::fs::write(staged.join("shaders/b.glsl"), b"new").unwrap();
+        install_files(&staged, &folder).unwrap();
+        assert_eq!(std::fs::read(folder.join(ROMP)).unwrap(), b"new");
+        assert_eq!(
+            std::fs::read(folder.join("shaders/a.glsl")).unwrap(),
+            b"new"
+        );
+        assert_eq!(
+            std::fs::read(folder.join("shaders/b.glsl")).unwrap(),
+            b"new"
+        );
+        assert_eq!(std::fs::read(folder.join("mine.txt")).unwrap(), b"kept");
+        assert!(!with_suffix(&folder.join(ROMP), OLD).exists());
+
+        // A file where a folder should go stops the update partway, and everything goes back.
+        std::fs::write(staged.join(ROMP), b"newer").unwrap();
+        std::fs::create_dir_all(staged.join("mine.txt")).unwrap();
+        std::fs::write(staged.join("mine.txt/x"), b"x").unwrap();
+        assert!(install_files(&staged, &folder).is_err());
+        assert_eq!(std::fs::read(folder.join(ROMP)).unwrap(), b"new");
+        assert_eq!(std::fs::read(folder.join("mine.txt")).unwrap(), b"kept");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_new_appimage_replaces_the_old_one_and_can_run() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let appimage = dir.path().join("ROM-Play.AppImage");
+        std::fs::write(&appimage, b"\x7fELF old").unwrap();
+        std::fs::set_permissions(&appimage, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(stage_appimage(b"not a program", &dir.path().join("s")).is_err());
+        std::fs::create_dir_all(dir.path().join("s")).unwrap();
+        let staged = stage_appimage(b"\x7fELF new", &dir.path().join("s")).unwrap();
+        install_appimage(&staged, &appimage).unwrap();
+        assert_eq!(std::fs::read(&appimage).unwrap(), b"\x7fELF new");
+        let mode = std::fs::metadata(&appimage).unwrap().permissions().mode();
+        assert_eq!(mode & 0o111, 0o111);
+        assert!(!with_suffix(&appimage, ".new").exists());
+    }
+
+    #[test]
+    fn a_downloaded_windows_rom_play_is_told_from_a_build() {
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join(ROMP);
+        std::fs::write(&exe, b"").unwrap();
+        std::fs::write(dir.path().join(RUNNER), b"").unwrap();
+        assert_eq!(
+            release_folder(&exe),
+            None,
+            "a build has no license beside it"
+        );
+        std::fs::write(dir.path().join("LICENSE"), b"").unwrap();
+        assert_eq!(release_folder(&exe), Some(dir.path().to_path_buf()));
     }
 
     #[test]

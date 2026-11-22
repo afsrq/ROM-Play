@@ -110,7 +110,7 @@ impl Controller {
         let Some(app) = self_update::running_app() else {
             return;
         };
-        let Some(bundle) = self_update::bundle_id(&app) else {
+        let Some(bundle) = self_update::identity(&app) else {
             return;
         };
         if !self_update::can_replace(&app) {
