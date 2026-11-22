@@ -3,32 +3,40 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-macOS%20(Apple%20Silicon)-blue" alt="Platform: macOS on Apple Silicon">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platforms: macOS, Windows and Linux">
   <a href="https://romm.app"><img src="https://img.shields.io/badge/RomM-5.0%2B-6f42c1" alt="Needs RomM 5.0 or newer"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-green" alt="License: GPL-3.0-or-later"></a>
 </p>
 
-**ROM Play is an emulator front end for the Mac.** It plays the games in your [RomM](https://romm.app) library, from the Atari 2600 to the PlayStation 4, Switch and PS Vita, each in its own emulator.
+**ROM Play is an emulator front end for Mac, Windows and Linux.** It plays the games in your [RomM](https://romm.app) library, from the Atari 2600 to the PlayStation 4, Switch and PS Vita, each in its own emulator.
 
 ROM Play is based on [RomP](https://github.com/RompEmu/RomP) by Beshr Kayali Reinholdsson, an open-source RomM player, and builds on it with more systems and features. All credit for RomP goes to its author and contributors. ROM Play isn't affiliated with or endorsed by the RomP project.
 
 ## Getting ROM Play
 
-You need a Mac with Apple Silicon and a [RomM](https://romm.app) server, version 5.0 or newer.
+You need a [RomM](https://romm.app) server, version 5.0 or newer, and one of these:
 
-1. Download the latest `.dmg` from [Releases](https://github.com/afsrq/ROM-Play/releases/latest).
-2. Open it and drag **ROM Play** to Applications.
-3. ROM Play isn't notarized by Apple, so macOS blocks it the first time. Open it once, then go to System Settings → Privacy & Security and choose **Open Anyway**.
-4. Sign in with your RomM server's address and your RomM account.
+- a Mac with Apple Silicon
+- a 64-bit Windows PC
+- a 64-bit Linux PC with glibc 2.35 or newer, such as Ubuntu 22.04 or later
 
-From then on, ROM Play keeps itself up to date.
+Download ROM Play for your computer from [Releases](https://github.com/afsrq/ROM-Play/releases/latest), then sign in with your RomM server's address and your RomM account.
+
+**Mac:** open the `.dmg` and drag **ROM Play** to Applications. ROM Play isn't notarized by Apple, so macOS blocks it the first time. Open it once, then go to System Settings → Privacy & Security and choose **Open Anyway**.
+
+**Windows:** unzip the `windows` zip into a folder of your own, such as one in your Documents, and open `romp.exe`. ROM Play isn't signed for Windows, so SmartScreen may warn about it the first time: choose **More info**, then **Run anyway**.
+
+**Linux:** the `.AppImage` runs on most distributions: make it executable (`chmod +x`) and open it. There's also a `.deb` for Debian and Ubuntu, an `.rpm` for Fedora and openSUSE, and a plain `.tar.gz`.
+
+ROM Play keeps itself up to date on a Mac, on Windows, and as an AppImage. The `.deb` and `.rpm` tell you when there's a new version to install.
 
 ## What ROM Play adds to RomP
 
 - **More systems:** PlayStation 4 with [shadPS4](https://github.com/shadps4-emu/shadPS4), Nintendo Switch with [Ryubing](https://git.ryujinx.app/projects/Ryubing), Nintendo 3DS with [Azahar](https://github.com/azahar-emu/azahar) and PS Vita with [Vita3K](https://github.com/Vita3K/Vita3K). ROM Play installs each one and keeps it apart from any copy you installed yourself.
 - **TV mode:** a full-screen layout for playing on a TV with a controller. Consoles and collections run along the top, the box art is big, and games start full screen. The View/Select button switches it on and off.
-- **Games outside RomM:** the **+** button in the sidebar adds a Mac app, such as a recompiled port of a console game, or a ROM file you have on your Mac. Each one goes under its console, including the Switch and Switch 2, and can borrow its cover and details from the same game in your RomM library. Mac apps open as themselves, ROM files play with ROM Play's emulators, and play time is kept for both. Removing one takes it out of ROM Play and leaves the files alone.
+- **Games outside RomM:** the **+** button in the sidebar adds an app, such as a recompiled port of a console game, or a ROM file you have on your computer. An app is a Mac app, a Windows `.exe`, or a Linux AppImage or program. Each one goes under its console, including the Switch and Switch 2, and can borrow its cover and details from the same game in your RomM library. Mac apps open as themselves, ROM files play with ROM Play's emulators, and play time is kept for both. Removing one takes it out of ROM Play and leaves the files alone.
 - **Updates itself:** ROM Play downloads new versions in the background, checks them, and installs them when you restart or quit.
+- **Windows and Linux:** everything ROM Play adds works on Windows and Linux too, except shadPS4 settings, which is Mac-only for now.
 - **Emulators that stay up to date:** before a game starts, ROM Play checks for a newer release of its standalone emulators (shadPS4, RPCS3, xemu and Vita3K) and installs it. If you're offline, or an update fails, it plays with the version it already has.
 - **PS4 settings:** Settings → Consoles → **shadPS4 settings** opens the [shadPS4 QtLauncher](https://github.com/shadps4-emu/shadps4-qtlauncher) for ROM Play's copy of shadPS4, for graphics, controls, patches and more.
 - **Its own app:** ROM Play keeps its settings, sign-ins and downloads apart from RomP's, so you can have both installed.
@@ -99,9 +107,9 @@ ROM Play downloads the emulator for each system the first time you play one of i
 | SNK Neo Geo CD | NeoCD |
 | SNK Neo Geo Pocket and Pocket Color | Beetle NeoPop |
 | Sony PlayStation | Beetle PSX HW |
-| Sony PlayStation 2 | [ARMSX2](https://github.com/RompEmu/ARMSX2) |
+| Sony PlayStation 2 | PCSX2 on Windows and Linux, [ARMSX2](https://github.com/RompEmu/ARMSX2) on Macs |
 | Sony PlayStation 3 | RPCS3 |
-| Sony PlayStation 4 | [shadPS4](https://github.com/shadps4-emu/shadPS4), on macOS 26 or newer, through Rosetta 2 |
+| Sony PlayStation 4 | [shadPS4](https://github.com/shadps4-emu/shadPS4); on a Mac, macOS 26 or newer, through Rosetta 2 |
 | Sony PSP | PPSSPP |
 | Sony PS Vita | [Vita3K](https://github.com/Vita3K/Vita3K) |
 | PICO-8 | [FAKE-08](https://github.com/RompEmu/fake-08) |
@@ -112,7 +120,7 @@ ROM Play downloads the emulator for each system the first time you play one of i
 | Microsoft Xbox | xemu |
 | ZX Spectrum | Fuse |
 
-All emulators except xemu, RPCS3, shadPS4, Ryubing and Vita3K are [libretro](https://www.libretro.com) cores. ARMSX2 and FAKE-08 come from RompEmu's own forks, and Azahar from Azahar's own releases, checked against the checksums GitHub publishes. Dolphin, PPSSPP, Flycast, Beetle PSX HW, Mupen64Plus-Next, ARMSX2 and Azahar draw through Vulkan, using the bundled [MoltenVK](https://github.com/KhronosGroup/MoltenVK). Most of them fall back to OpenGL if Vulkan isn't working.
+All emulators except xemu, RPCS3, shadPS4, Ryubing and Vita3K are [libretro](https://www.libretro.com) cores. ARMSX2 and FAKE-08 come from RompEmu's own forks, and Azahar from Azahar's own releases, checked against the checksums GitHub publishes. Dolphin, PPSSPP, Flycast, Beetle PSX HW, Mupen64Plus-Next, the PS2 emulators and Azahar draw through Vulkan, and most of them fall back to OpenGL if the computer has no working Vulkan driver. On a Mac, Vulkan comes from the bundled [MoltenVK](https://github.com/KhronosGroup/MoltenVK).
 
 ### What some systems need
 
@@ -135,7 +143,7 @@ cargo build --release
 
 If the folder you build in has a space in its path, one of the dependencies (SDL3) fails to link. Build somewhere else with `CARGO_TARGET_DIR`, for example `CARGO_TARGET_DIR=~/Library/Caches/rom-play/target cargo build --release`; `make` picks it up too.
 
-`make dist` packages the app into `dist/`: `ROM Play.app`, a zip and a disk image. `make check` runs the same checks as CI: formatting, Clippy, tests, [cargo-deny](https://github.com/EmbarkStudios/cargo-deny), [typos](https://github.com/crate-ci/typos), [actionlint](https://github.com/rhysd/actionlint) and [zizmor](https://github.com/zizmorcore/zizmor).
+`make dist` packages the app into `dist/`: on a Mac, `ROM Play.app`, a zip and a disk image; on Windows, a zip; on Linux, an AppImage, a `.deb`, an `.rpm` and a `.tar.gz`. `make check` runs the same checks as CI: formatting, Clippy, tests, [cargo-deny](https://github.com/EmbarkStudios/cargo-deny), [typos](https://github.com/crate-ci/typos), [actionlint](https://github.com/rhysd/actionlint) and [zizmor](https://github.com/zizmorcore/zizmor).
 
 The icon is drawn from `packaging/icon/icon.svg`. After changing it, run `sh packaging/icon/render.sh` on a Mac to redraw every icon and the banner.
 
