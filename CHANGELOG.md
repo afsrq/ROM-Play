@@ -32,7 +32,7 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ### Added
 
-- Games from this Mac: the + button in the sidebar adds a Mac app, such as a recompiled port of a console game, or a ROM file on this Mac, to the library without RomM. You choose the console it belongs under, including the Nintendo Switch and Switch 2, which RomM doesn't need to have, and the same game in your RomM library to borrow its cover, details and screenshots from; ROM Play suggests the likeliest. A Mac app without a match shows its own icon. Mac apps open as themselves and ROM files play with ROM Play's emulators, and play time is counted for both. Remove from ROM Play takes one out of the library and leaves its files alone. ROM Play doesn't tell RomM about these games.
+- Games outside RomM: the + button in the sidebar adds a Mac app, such as a recompiled port of a console game, or a ROM file on your Mac, to the library without RomM. You choose the console it belongs under, including the Nintendo Switch and Switch 2, which RomM doesn't need to have, and the same game in your RomM library to borrow its cover, details and screenshots from; ROM Play suggests the likeliest. A Mac app without a match shows its own icon. Mac apps open as themselves and ROM files play with ROM Play's emulators, and play time is counted for both. Remove from ROM Play takes one out of the library and leaves its files alone. ROM Play doesn't tell RomM about these games.
 
 ## [0.24.0] - 2026-11-18
 
