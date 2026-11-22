@@ -18,6 +18,15 @@ fn asset_name() -> Option<&'static str> {
         Some("macos-arm64-latest.dmg")
     } else if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
         Some("macos-latest.dmg")
+    } else if cfg!(all(windows, target_arch = "x86_64")) {
+        Some("windows-latest.zip")
+    } else if cfg!(all(windows, target_arch = "aarch64")) {
+        Some("windows-arm64-latest.zip")
+    // The AppImage brings its own Qt, which the Ubuntu build expects the system to have.
+    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        Some("Vita3K-x86_64.AppImage")
+    } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
+        Some("Vita3K-aarch64.AppImage")
     } else {
         None
     }
@@ -32,8 +41,24 @@ fn pick(assets: &[Asset]) -> Option<&Asset> {
     assets.iter().find(|a| a.name == name)
 }
 
-fn exe_in(dir: &Path, _asset: &str) -> PathBuf {
-    dir.join("Vita3K.app/Contents/MacOS/Vita3K")
+fn exe_in(dir: &Path, asset: &str) -> PathBuf {
+    if cfg!(target_os = "macos") {
+        dir.join("Vita3K.app/Contents/MacOS/Vita3K")
+    } else if cfg!(windows) {
+        dir.join("Vita3K.exe")
+    } else {
+        dir.join(asset)
+    }
+}
+
+/// The folder Vita3K looks in for a folder named portable: beside the app on a Mac, and beside
+/// Vita3K.exe or the AppImage elsewhere.
+fn beside(exe: &Path) -> Option<&Path> {
+    if cfg!(target_os = "macos") {
+        exe.ancestors().nth(4)
+    } else {
+        exe.parent()
+    }
 }
 
 pub fn emulator(dir: PathBuf) -> Emulator {
@@ -68,21 +93,22 @@ impl Home {
     /// That folder is a link to this one, so updating Vita3K keeps them.
     pub fn link_from(&self, exe: &Path) -> std::io::Result<()> {
         std::fs::create_dir_all(&self.0)?;
-        let Some(version_dir) = exe.ancestors().nth(4) else {
-            return Err(std::io::Error::other("Vita3K isn't inside its app"));
+        let Some(version_dir) = beside(exe) else {
+            return Err(std::io::Error::other("Vita3K isn't inside its folder"));
         };
         let portable = version_dir.join("portable");
         if std::fs::read_link(&portable).is_ok_and(|to| to == self.0) {
             return Ok(());
         }
         if portable.is_symlink() || portable.is_file() {
-            std::fs::remove_file(&portable)?;
+            // A junction is a directory to Windows, and removing it leaves what it points to.
+            if std::fs::remove_file(&portable).is_err() {
+                std::fs::remove_dir(&portable)?;
+            }
         } else if portable.is_dir() {
             std::fs::remove_dir_all(&portable)?;
         }
-        #[cfg(unix)]
-        std::os::unix::fs::symlink(&self.0, &portable)?;
-        Ok(())
+        link_dir(&self.0, &portable)
     }
 
     /// Installs RomM's Vita system software, and its font package when there is one, into the
@@ -111,6 +137,34 @@ impl Home {
                 "Vita3K could not install the PS Vita system software."
             ))
         }
+    }
+}
+
+#[cfg(unix)]
+fn link_dir(to: &Path, link: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(to, link)
+}
+
+/// A junction, which unlike a symbolic link Windows lets anyone make.
+#[cfg(windows)]
+fn link_dir(to: &Path, link: &Path) -> std::io::Result<()> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let status = std::process::Command::new("cmd")
+        .arg("/C")
+        .arg("mklink")
+        .arg("/J")
+        .arg(link)
+        .arg(to)
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdout(std::process::Stdio::null())
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(
+            "Could not link Vita3K's portable folder",
+        ))
     }
 }
 
@@ -413,21 +467,28 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[test]
     fn vita3k_finds_rom_plays_folder_as_its_portable_one() {
         let dir = tempfile::tempdir().unwrap();
-        let exe = dir
-            .path()
-            .join("cores/vita3k/v1/Vita3K.app/Contents/MacOS/Vita3K");
+        let exe = exe_in(
+            &dir.path().join("cores/vita3k/v1"),
+            asset_name().unwrap_or("Vita3K"),
+        );
         std::fs::create_dir_all(exe.parent().unwrap()).unwrap();
         std::fs::create_dir_all(dir.path().join("cores/vita3k/v1/portable/fs")).unwrap();
         let home = Home(dir.path().join("data/vita3k"));
         home.link_from(&exe).unwrap();
         let portable = dir.path().join("cores/vita3k/v1/portable");
-        assert_eq!(std::fs::read_link(&portable).unwrap(), home.0);
+        std::fs::write(home.0.join("config.yml"), b"x").unwrap();
+        assert!(
+            portable.join("config.yml").is_file(),
+            "the portable folder is ROM Play's"
+        );
         home.link_from(&exe).unwrap();
-        assert!(home.0.is_dir());
+        assert!(
+            home.0.join("config.yml").is_file(),
+            "linking again keeps what's there"
+        );
     }
 
     #[test]

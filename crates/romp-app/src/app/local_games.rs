@@ -24,7 +24,7 @@ fn strings(items: impl IntoIterator<Item = String>) -> ModelRc<slint::SharedStri
 }
 
 impl Controller {
-    /// The + button: picks a Mac app or ROM file with the system's file picker, then asks which
+    /// The + button: picks an app or ROM file with the system's file picker, then asks which
     /// console it belongs to and which RomM game it is.
     pub(super) fn add_local_game(&self) {
         self.shared.rt.spawn(async {
@@ -196,7 +196,7 @@ impl Controller {
         self.back_to_library();
     }
 
-    /// A Mac app plays as itself: ROM Play opens it, and the game counts as running until it quits.
+    /// An app plays as itself: ROM Play opens it, and the game counts as running until it quits.
     pub(super) fn play_local_app(&self, detail: GameDetail, app: PathBuf) {
         let id = detail.id;
         let name = detail.title.clone();
@@ -221,10 +221,18 @@ impl Controller {
     }
 }
 
-/// Opens an app as a new instance and waits until it quits, which is when the game ends.
+/// Opens an app as a new instance and waits until it quits, which is when the game ends. Other
+/// systems run the program itself, from its own folder, where ports look for their files.
 fn open_app(app: &Path) -> std::process::Command {
-    let mut command = std::process::Command::new("/usr/bin/open");
-    command.args(["-W", "-n"]).arg(app);
+    if cfg!(target_os = "macos") {
+        let mut command = std::process::Command::new("/usr/bin/open");
+        command.args(["-W", "-n"]).arg(app);
+        return command;
+    }
+    let mut command = std::process::Command::new(app);
+    if let Some(dir) = app.parent() {
+        command.current_dir(dir);
+    }
     command
 }
 
@@ -269,6 +277,7 @@ mod tests {
         assert_eq!(civil_from_days(11_017), (2000, 3, 1));
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn an_app_opens_as_a_new_instance_and_is_waited_for() {
         let command = open_app(Path::new("/Applications/Zelda 64.app"));

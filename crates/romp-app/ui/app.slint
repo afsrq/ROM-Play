@@ -1100,7 +1100,7 @@ component Library inherits Rectangle {
                     }
                     Row {
                         alignment: center;
-                        IconButton { icon: @image-url("icons/add.svg"); tooltip: @tr("Add a game from this Mac"); clicked => { root.add-local-game(); } }
+                        IconButton { icon: @image-url("icons/add.svg"); tooltip: @tr("Add a game from this computer"); clicked => { root.add-local-game(); } }
                     }
                     Row {
                         alignment: center;
@@ -1136,7 +1136,7 @@ component Library inherits Rectangle {
                         }
                     }
                     if root.notifications-shown: BellButton { unread: root.notifications-unread; clicked => { root.open-notifications(); } }
-                    IconButton { icon: @image-url("icons/add.svg"); tooltip: @tr("Add a game from this Mac"); clicked => { root.add-local-game(); } }
+                    IconButton { icon: @image-url("icons/add.svg"); tooltip: @tr("Add a game from this computer"); clicked => { root.add-local-game(); } }
                     IconButton { icon: @image-url("icons/tv.svg"); tooltip: @tr("TV mode"); clicked => { root.open-tv(); } }
                     IconButton { icon: @image-url("icons/info.svg"); tooltip: @tr("About"); clicked => { root.open-about(); } }
                     IconButton { icon: @image-url("icons/settings.svg"); tooltip: @tr("Settings"); clicked => { root.open-settings(); } }
@@ -2802,7 +2802,7 @@ component RemapDialog inherits Rectangle {
     }
 }
 
-/// Adds a Mac app or a ROM file from this computer to the library, under a console, matched to
+/// Adds an app or a ROM file from this computer to the library, under a console, matched to
 /// the same game in RomM for its cover and details.
 component AddGameDialog inherits Rectangle {
     in property <string> file;
@@ -2839,10 +2839,10 @@ component AddGameDialog inherits Rectangle {
             box := VerticalLayout {
                 padding: 20px;
                 spacing: 10px;
-                Text { horizontal-alignment: Locale.start; text: @tr("Add a game from this Mac"); font-size: Theme.font-subtitle; font-weight: 700; }
+                Text { horizontal-alignment: Locale.start; text: @tr("Add a game from this computer"); font-size: Theme.font-subtitle; font-weight: 700; }
                 Text {
                     horizontal-alignment: Locale.start;
-                    text: (root.is-app ? @tr("Mac app") : @tr("ROM file")) + " · " + root.file;
+                    text: (root.is-app ? @tr("App") : @tr("ROM file")) + " · " + root.file;
                     color: Theme.text-secondary;
                     overflow: elide;
                 }
@@ -2871,7 +2871,7 @@ component AddGameDialog inherits Rectangle {
                 }
                 Text {
                     horizontal-alignment: Locale.start;
-                    text: @tr("It lends this game its cover, details and screenshots. Without one, a Mac app keeps its own icon.");
+                    text: @tr("It lends this game its cover, details and screenshots. Without one, a Mac app keeps its own icon, and other apps show the console's.");
                     font-size: Theme.font-small;
                     color: Theme.text-muted;
                     wrap: word-wrap;

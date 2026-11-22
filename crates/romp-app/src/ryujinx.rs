@@ -2,8 +2,8 @@
 //! its own program.
 //!
 //! Ryubing publishes no checksums and its Mac app has no Apple developer signature, so ROM Play
-//! installs only the build below, checked against its SHA-256. A newer one comes with an update
-//! to ROM Play.
+//! installs only the build below for each system, checked against its SHA-256. A newer one comes
+//! with an update to ROM Play.
 
 use crate::external::{Pinned, Running};
 use std::path::{Path, PathBuf};
@@ -13,18 +13,71 @@ pub const KEYS: &str = "the Switch keys (prod.keys), dumped from your own Switch
 const KEY_FILES: [&str; 2] = ["prod.keys", "title.keys"];
 
 const VERSION: &str = "1.3.3";
-const URL: &str =
-    "https://git.ryujinx.app/projects/Ryubing/releases/download/1.3.3/ryujinx-1.3.3-macos_universal.app.tar.gz";
-const FILE: &str = "ryujinx-1.3.3-macos_universal.app.tar.gz";
-const SHA256: &str = "e4818bb84c98e0d3120691821e90772099e46101273d3f145ffdb10eee2c0dbb";
 
-/// The pinned build is the universal macOS one.
+/// One system's download of the pinned version, and where the program is inside it.
+struct Build {
+    url: &'static str,
+    file: &'static str,
+    sha256: &'static str,
+    exe: &'static str,
+}
+
+macro_rules! build {
+    ($file:literal, $sha256:literal, $exe:literal) => {
+        Some(Build {
+            url: concat!(
+                "https://git.ryujinx.app/projects/Ryubing/releases/download/1.3.3/",
+                $file
+            ),
+            file: $file,
+            sha256: $sha256,
+            exe: $exe,
+        })
+    };
+}
+
+#[cfg(target_os = "macos")]
+const BUILD: Option<Build> = build!(
+    "ryujinx-1.3.3-macos_universal.app.tar.gz",
+    "e4818bb84c98e0d3120691821e90772099e46101273d3f145ffdb10eee2c0dbb",
+    "Ryujinx.app/Contents/MacOS/Ryujinx"
+);
+#[cfg(all(windows, target_arch = "x86_64"))]
+const BUILD: Option<Build> = build!(
+    "ryujinx-1.3.3-win_x64.zip",
+    "baa93f48b012eefeca339a78a39844599ccd194c109093f354a4b9d1e03a056e",
+    "publish/Ryujinx.exe"
+);
+// Ryujinx.sh starts Ryubing with the settings it needs on Linux.
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+const BUILD: Option<Build> = build!(
+    "ryujinx-1.3.3-linux_x64.tar.gz",
+    "19b67b222726f28d11846e9b7cbaed113ea03c2be016408662ffb27c558bd28c",
+    "publish/Ryujinx.sh"
+);
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+const BUILD: Option<Build> = build!(
+    "ryujinx-1.3.3-linux_arm64.tar.gz",
+    "0485b611583c401733d706ec39db40999f08ba4e22f6f38b0d94602a8016d295",
+    "publish/Ryujinx.sh"
+);
+#[cfg(not(any(
+    target_os = "macos",
+    all(windows, target_arch = "x86_64"),
+    all(
+        target_os = "linux",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    )
+)))]
+const BUILD: Option<Build> = None;
+
+/// Whether Ryubing makes a build for this system.
 pub fn available() -> bool {
-    cfg!(target_os = "macos")
+    BUILD.is_some()
 }
 
 fn exe_in(dir: &Path) -> PathBuf {
-    dir.join("Ryujinx.app/Contents/MacOS/Ryujinx")
+    dir.join(BUILD.as_ref().map_or("Ryujinx", |b| b.exe))
 }
 
 pub fn emulator(dir: PathBuf) -> Pinned {
@@ -32,9 +85,9 @@ pub fn emulator(dir: PathBuf) -> Pinned {
         name: "Ryubing",
         dir,
         version: VERSION,
-        url: URL,
-        file: FILE,
-        sha256: SHA256,
+        url: BUILD.as_ref().map_or("", |b| b.url),
+        file: BUILD.as_ref().map_or("", |b| b.file),
+        sha256: BUILD.as_ref().map_or("", |b| b.sha256),
         exe_in,
     }
 }
@@ -278,7 +331,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, target_os = "macos"))]
+#[cfg(test)]
 mod real {
     use super::*;
 
@@ -294,6 +347,9 @@ mod real {
             .unwrap()
             .exe();
         assert!(exe.is_file(), "{}", exe.display());
+        if !cfg!(target_os = "macos") {
+            return;
+        }
         let app = exe.ancestors().nth(3).unwrap();
         let signed = std::process::Command::new("/usr/bin/codesign")
             .args(["--verify", "--deep"])

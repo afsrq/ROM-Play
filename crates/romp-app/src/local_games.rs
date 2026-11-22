@@ -21,31 +21,100 @@ pub struct Identified {
     pub size_bytes: i64,
 }
 
-/// Asks for a game with the system's file picker. `None` when it's cancelled.
+/// Asks for a game with the system's file picker. `None` when it's cancelled, or when there's no
+/// picker ROM Play knows how to open.
 pub fn pick_file() -> Option<PathBuf> {
-    if !cfg!(target_os = "macos") {
-        return None;
-    }
-    let output = std::process::Command::new("/usr/bin/osascript")
-        .arg("-e")
-        .arg(
-            r#"POSIX path of (choose file with prompt "Choose a game to add to ROM Play: a Mac app, or a ROM file")"#,
-        )
-        .output()
-        .ok()?;
+    let output = picker()?.output().ok()?;
     if !output.status.success() {
         return None;
     }
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    // The picker ends a folder, such as an app, with a slash.
+    // The Mac's picker ends a folder, such as an app, with a slash.
     let path = path.trim_end_matches('/');
     (!path.is_empty()).then(|| PathBuf::from(path))
 }
 
+const PICK_PROMPT: &str = "Choose a game to add to ROM Play: an app, or a ROM file";
+
+#[cfg(target_os = "macos")]
+fn picker() -> Option<std::process::Command> {
+    let mut command = std::process::Command::new("/usr/bin/osascript");
+    command.arg("-e").arg(format!(
+        r#"POSIX path of (choose file with prompt "{PICK_PROMPT}")"#
+    ));
+    Some(command)
+}
+
+#[cfg(windows)]
+fn picker() -> Option<std::process::Command> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let script = format!(
+        "Add-Type -AssemblyName System.Windows.Forms; \
+         $d = New-Object System.Windows.Forms.OpenFileDialog; \
+         $d.Title = '{PICK_PROMPT}'; \
+         if ($d.ShowDialog() -eq 'OK') {{ [Console]::Out.Write($d.FileName) }} else {{ exit 1 }}"
+    );
+    let mut command = std::process::Command::new("powershell");
+    command
+        .args(["-NoProfile", "-NonInteractive", "-STA", "-Command", &script])
+        .creation_flags(CREATE_NO_WINDOW);
+    Some(command)
+}
+
+/// Linux has no one picker: GNOME's zenity, or KDE's kdialog, whichever is installed.
+#[cfg(not(any(target_os = "macos", windows)))]
+fn picker() -> Option<std::process::Command> {
+    let on_path = |name: &str| {
+        std::env::var_os("PATH")
+            .is_some_and(|paths| std::env::split_paths(&paths).any(|dir| dir.join(name).is_file()))
+    };
+    if on_path("zenity") {
+        let mut command = std::process::Command::new("zenity");
+        command.args(["--file-selection", "--title", PICK_PROMPT]);
+        Some(command)
+    } else if on_path("kdialog") {
+        let mut command = std::process::Command::new("kdialog");
+        command.args(["--getopenfilename", ".", "--title", PICK_PROMPT]);
+        Some(command)
+    } else {
+        None
+    }
+}
+
+/// A program that plays as itself, such as a recompiled port: a Mac app, a Windows .exe, or on
+/// Linux an AppImage or another program.
 pub fn is_app(path: &Path) -> bool {
-    path.extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("app"))
-        && path.is_dir()
+    let has = |ext: &str| {
+        path.extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case(ext))
+    };
+    if cfg!(target_os = "macos") {
+        has("app") && path.is_dir()
+    } else if cfg!(windows) {
+        has("exe") && path.is_file()
+    } else {
+        path.is_file() && (has("appimage") || is_program(path))
+    }
+}
+
+/// A file that runs on its own: executable, and a program or a script rather than a ROM that
+/// a drive marks executable along with everything else.
+fn is_program(path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::io::Read;
+        use std::os::unix::fs::PermissionsExt;
+        let executable = std::fs::metadata(path).is_ok_and(|m| m.permissions().mode() & 0o111 != 0);
+        let mut start = [0u8; 4];
+        let read = std::fs::File::open(path).and_then(|mut f| f.read_exact(&mut start));
+        executable && read.is_ok() && (start == *b"\x7fELF" || start.starts_with(b"#!"))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+        false
+    }
 }
 
 /// Reads a picked game's name and size: an app's own name, or a ROM's file name without its
@@ -70,6 +139,9 @@ pub fn identify(path: &Path) -> Identified {
 }
 
 fn info_value(app: &Path, key: &str) -> Option<String> {
+    if !cfg!(target_os = "macos") {
+        return None;
+    }
     let output = std::process::Command::new("/usr/bin/plutil")
         .args(["-extract", key, "raw", "-o", "-"])
         .arg(app.join("Contents/Info.plist"))
@@ -110,8 +182,12 @@ fn size_of(path: &Path) -> u64 {
         .sum()
 }
 
-/// An app's icon as a PNG, from the .icns it names, through macOS's own image tool.
+/// A Mac app's icon as a PNG, from the .icns it names, through macOS's own image tool. Other
+/// systems' programs show the matched game's cover, or the console's.
 pub fn app_icon_png(app: &Path) -> Option<Vec<u8>> {
+    if !cfg!(target_os = "macos") {
+        return None;
+    }
     let name = info_value(app, "CFBundleIconFile").unwrap_or_else(|| "AppIcon".into());
     let file = if Path::new(&name).extension().is_some() {
         name
