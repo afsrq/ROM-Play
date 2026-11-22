@@ -332,6 +332,7 @@ pub fn launch(
 mod tests {
     use super::*;
 
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     fn asset(name: &str) -> Asset {
         Asset {
             name: name.to_string(),

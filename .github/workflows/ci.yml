@@ -79,9 +79,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libasound2-dev libegl-dev libfontconfig1-dev libpulse-dev libudev-dev libwayland-dev libxkbcommon-dev
+      # -D warnings fails on warnings in ROM Play's own code. CARGO_BUILD_WARNINGS would also
+      # reach the cargo build inside cubeb-sys, failing it on a warning in cubeb-pulse.
       - name: Clippy
-        env:
-          CARGO_BUILD_WARNINGS: deny
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
         run: cargo test --workspace --locked
