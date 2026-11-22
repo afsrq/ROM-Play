@@ -1,45 +1,46 @@
 # The .deb and .rpm, built by `make packages` from the release binaries. ROM Play finds romp-runner
-# and its shaders beside the program, so everything goes in /opt/romp and the command links there.
-name: romp
+# and its shaders beside the program, so everything goes in /opt/rom-play and the rom-play command
+# links there. The names differ from RomP's, so both can be installed.
+name: rom-play
 arch: amd64
 platform: linux
 version: ${ROMP_VERSION}
 section: games
-maintainer: Beshr Kayali Reinholdsson <me@beshr.com>
-description: Play retro games from your RomM library, with each game running in its own sandboxed process.
+maintainer: afsrq <62360328+afsrq@users.noreply.github.com>
+description: Play the games in your RomM library, from the Atari 2600 to the PS4, Switch and PS Vita.
 homepage: https://github.com/afsrq/ROM-Play
 license: GPL-3.0-or-later
 
 contents:
   - src: target/release/romp
-    dst: /opt/romp/romp
+    dst: /opt/rom-play/romp
     file_info:
       mode: 0755
   - src: target/release/romp-runner
-    dst: /opt/romp/romp-runner
+    dst: /opt/rom-play/romp-runner
     file_info:
       mode: 0755
   - src: crates/romp-app/shaders
-    dst: /opt/romp/shaders
+    dst: /opt/rom-play/shaders
     type: tree
   # Tells ROM Play's update check which download replaces it.
   - src: packaging/linux/package/deb
-    dst: /opt/romp/package
+    dst: /opt/rom-play/package
     packager: deb
   - src: packaging/linux/package/rpm
-    dst: /opt/romp/package
+    dst: /opt/rom-play/package
     packager: rpm
-  - src: /opt/romp/romp
-    dst: /usr/bin/romp
+  - src: /opt/rom-play/romp
+    dst: /usr/bin/rom-play
     type: symlink
-  - src: packaging/linux/romp.desktop
-    dst: /usr/share/applications/romp.desktop
-  - src: packaging/linux/romp.png
-    dst: /usr/share/icons/hicolor/256x256/apps/romp.png
-  - src: packaging/linux/io.github.rompemu.romp.metainfo.xml
-    dst: /usr/share/metainfo/io.github.rompemu.romp.metainfo.xml
+  - src: packaging/linux/io.github.afsrq.romplay.desktop
+    dst: /usr/share/applications/io.github.afsrq.romplay.desktop
+  - src: packaging/linux/rom-play.png
+    dst: /usr/share/icons/hicolor/256x256/apps/rom-play.png
+  - src: packaging/linux/io.github.afsrq.romplay.metainfo.xml
+    dst: /usr/share/metainfo/io.github.afsrq.romplay.metainfo.xml
   - src: LICENSE
-    dst: /usr/share/doc/romp/LICENSE
+    dst: /usr/share/doc/rom-play/LICENSE
 
 # What ROM Play links to, and what winit loads when it opens a window on X11 or Wayland. Sound and
 # Vulkan are only recommended: a game still plays without them.

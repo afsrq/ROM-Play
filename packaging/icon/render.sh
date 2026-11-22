@@ -12,7 +12,7 @@ trap 'rm -rf "$tmp"' EXIT
 render "$here/icon.svg" "$root/crates/romp-app/assets/icon-macos.png" 1024 100 185
 render "$here/icon.svg" "$root/crates/romp-app/assets/icon.png" 1024
 render "$here/icon.svg" "$root/crates/romp-app/ui/icons/app-icon.png" 512 0 225
-render "$here/icon.svg" "$root/packaging/linux/romp.png" 256 12 52
+render "$here/icon.svg" "$root/packaging/linux/rom-play.png" 256 12 52
 
 # Windows: an .ico holding a PNG image at each size, which Windows Vista and later read.
 for size in 16 24 32 48 64 128 256; do

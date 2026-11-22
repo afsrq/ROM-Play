@@ -147,12 +147,12 @@ appimage: build $(APPIMAGETOOL) $(APPIMAGE_RUNTIME)
 	mkdir -p $(APPDIR)/usr/bin $(APPDIR)/usr/lib $(APPDIR)/usr/share/applications $(APPDIR)/usr/share/metainfo $(APPDIR)/usr/share/icons/hicolor/256x256/apps
 	cp $(BIN)/romp $(BIN)/romp-runner $(APPDIR)/usr/bin/
 	cp -R crates/romp-app/shaders $(APPDIR)/usr/bin/
-	cp packaging/linux/romp.desktop $(APPDIR)/
-	cp packaging/linux/romp.desktop $(APPDIR)/usr/share/applications/
+	cp packaging/linux/$(BUNDLE_ID).desktop $(APPDIR)/
+	cp packaging/linux/$(BUNDLE_ID).desktop $(APPDIR)/usr/share/applications/
 	cp packaging/linux/$(BUNDLE_ID).metainfo.xml $(APPDIR)/usr/share/metainfo/
 	appstreamcli validate --no-net $(APPDIR)/usr/share/metainfo/$(BUNDLE_ID).metainfo.xml
-	cp packaging/linux/romp.png $(APPDIR)/
-	cp packaging/linux/romp.png $(APPDIR)/usr/share/icons/hicolor/256x256/apps/
+	cp packaging/linux/rom-play.png $(APPDIR)/
+	cp packaging/linux/rom-play.png $(APPDIR)/usr/share/icons/hicolor/256x256/apps/
 	cp -L $(addprefix $(LINUX_LIBDIR)/,$(APPIMAGE_LIBS)) $(APPDIR)/usr/lib/
 	patchelf --set-rpath '$$ORIGIN/../lib' $(APPDIR)/usr/bin/romp
 	patchelf --set-rpath '$$ORIGIN' $(addprefix $(APPDIR)/usr/lib/,$(APPIMAGE_LIBS))

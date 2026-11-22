@@ -2,7 +2,9 @@
 Type=Application
 Name=ROM Play
 Comment=Play retro games from your RomM library
-Exec=romp
-Icon=romp
+Exec=rom-play
+Icon=rom-play
 Categories=Game;Emulator;
 Terminal=false
+# The window is named after the program inside, which is still called romp.
+StartupWMClass=romp

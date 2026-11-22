@@ -124,7 +124,7 @@ jobs:
                 chmod +x dist/*.AppImage
                 echo "ROMP=$(ls "$PWD"/dist/*.AppImage)" >> "$GITHUB_ENV"
               else
-                echo "ROMP=/usr/bin/romp" >> "$GITHUB_ENV"
+                echo "ROMP=/usr/bin/rom-play" >> "$GITHUB_ENV"
               fi
               ;;
             Windows)

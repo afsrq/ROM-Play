@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.rompemu.romp</id>
+  <id>io.github.afsrq.romplay</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>ROM Play</name>
   <summary>Play retro games from your RomM library</summary>
-  <developer_name>RompEmu</developer_name>
+  <developer_name>afsrq</developer_name>
   <description>
     <p>
-      ROM Play plays the games in your RomM library, with each game running in its own sandboxed process.
+      ROM Play plays the games in your RomM library, from the Atari 2600 to the PlayStation 4, Switch and PS Vita. It is based on RomP.
     </p>
     <ul>
       <li>Your RomM library: platforms, favorites, collections and recently played, with search and box art</li>
@@ -17,15 +17,15 @@
       <li>Sandboxed emulators: each game runs in a locked-down process that can only write to its own saves</li>
       <li>RetroAchievements, with popups, leaderboards and achievement lists</li>
       <li>Controllers and multiplayer, with any key or button remappable</li>
+      <li>TV mode, a full-screen layout for playing on a TV with a controller</li>
     </ul>
   </description>
-  <launchable type="desktop-id">romp.desktop</launchable>
+  <launchable type="desktop-id">io.github.afsrq.romplay.desktop</launchable>
   <provides>
-    <binary>romp</binary>
+    <binary>rom-play</binary>
   </provides>
   <url type="homepage">https://github.com/afsrq/ROM-Play</url>
   <url type="bugtracker">https://github.com/afsrq/ROM-Play/issues</url>
-  <url type="translate">https://crowdin.com/project/romp</url>
   <categories>
     <category>Game</category>
     <category>Emulator</category>
