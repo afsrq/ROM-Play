@@ -542,7 +542,10 @@ mod tests {
     #[test]
     fn a_folder_this_user_can_write_to_can_hold_an_update() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(can_replace(&dir.path().join("ROM Play.app")));
+        // On Windows the update goes inside ROM Play's own folder, so that has to be there.
+        let app = dir.path().join("ROM Play.app");
+        std::fs::create_dir_all(&app).unwrap();
+        assert!(can_replace(&app));
         assert!(!can_replace(Path::new("/System/ROM Play.app")));
     }
 

@@ -14,7 +14,7 @@ render "$here/icon.svg" "$root/crates/romp-app/assets/icon.png" 1024
 render "$here/icon.svg" "$root/crates/romp-app/ui/icons/app-icon.png" 512 0 225
 render "$here/icon.svg" "$root/packaging/linux/romp.png" 256 12 52
 
-# Windows: an .ico holding PNGs of each size, which Windows Vista and later read.
+# Windows: an .ico holding a PNG image at each size, which Windows Vista and later read.
 for size in 16 24 32 48 64 128 256; do
     render "$here/icon.svg" "$tmp/$size.png" "$size"
 done

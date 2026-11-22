@@ -150,12 +150,10 @@ fn link_dir(to: &Path, link: &Path) -> std::io::Result<()> {
 fn link_dir(to: &Path, link: &Path) -> std::io::Result<()> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    // cmd reads its own command line, so it's written out whole, with Windows' backslashes.
+    let quoted = |p: &Path| format!("\"{}\"", p.display().to_string().replace('/', "\\"));
     let status = std::process::Command::new("cmd")
-        .arg("/C")
-        .arg("mklink")
-        .arg("/J")
-        .arg(link)
-        .arg(to)
+        .raw_arg(format!("/C mklink /J {} {}", quoted(link), quoted(to)))
         .creation_flags(CREATE_NO_WINDOW)
         .stdout(std::process::Stdio::null())
         .status()?;

@@ -1,5 +1,5 @@
 // Renders an SVG to a square PNG with macOS's own SVG support: swift render.swift in.svg out.png size [inset radius]
-// With inset and radius (in 1024ths), the art is shrunk into a rounded square on a transparent
+// With inset and radius (as parts of 1024), the art is shrunk into a rounded square on a transparent
 // canvas, the way macOS app icons are drawn.
 import AppKit
 
