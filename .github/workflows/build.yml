@@ -67,8 +67,10 @@ jobs:
         run: make glibc-check
       - uses: actions/upload-artifact@v7.0.2
         with:
-          name: romp-${{ runner.os }}
+          # The smoke test's own build gets another name, so a release never picks up its files.
+          name: ${{ inputs.version == 'smoke' && 'smoke-build' || 'romp' }}-${{ runner.os }}
           path: |
+            dist/*.dmg
             dist/*.zip
             dist/*.tar.gz
             dist/*.AppImage

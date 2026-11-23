@@ -77,7 +77,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v8.0.2
         with:
-          name: romp-${{ runner.os }}
+          name: smoke-build-${{ runner.os }}
           path: dist
       # Only what every Linux desktop has, PipeWire ones included: Mesa, X11's client libraries,
       # fontconfig with a font, and PulseAudio's library. libxkbcommon-x11 is left out on
