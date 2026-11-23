@@ -4,6 +4,17 @@ All notable changes to ROM Play are listed here, and before 0.23.0, to RomP, whi
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-11-22
+
+### Added
+
+- ROM Play runs on Windows and Linux as well as the Mac. Windows gets a zip: unzip it anywhere and run romp.exe. Linux gets an AppImage, a .deb, an .rpm and a .tar.gz. Every console plays on them, with PCSX2 for the PS2 where the Mac uses ARMSX2. Switch games play with Ryubing and PS Vita games with Vita3K, each the build for that system, and the + button adds a Windows program, a Linux program or AppImage, or a ROM file, choosing it with the system's own file picker.
+- ROM Play updates itself on Windows and from the AppImage on Linux, the same way it does on a Mac: it downloads the update in the background, checks it against GitHub's checksum, and puts it in place when you restart or quit. The .deb, .rpm and .tar.gz say when a new version is out, for you to install.
+
+### Changed
+
+- The Linux packages are called rom-play, with ROM Play's own name and icon in the app menu, so they no longer clash with RomP's.
+
 ## [0.29.0] - 2026-11-22
 
 ### Added
@@ -414,7 +425,8 @@ First release, for macOS and Linux.
 - Two windows for Nintendo DS screens, and rotated screens for vertical arcade games.
 - Interface sizes of 1x, 1.5x and 2x, and the window, last view and scroll position remembered between runs.
 
-[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/afsrq/ROM-Play/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/afsrq/ROM-Play/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/afsrq/ROM-Play/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/afsrq/ROM-Play/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/afsrq/ROM-Play/compare/v0.26.0...v0.27.0
